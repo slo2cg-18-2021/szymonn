@@ -76,3 +76,96 @@
 - Wszystkie dane pozostają na Twoim urządzeniu
 - Dostęp do kamery jest używany TYLKO do skanowania kodów
 - Możesz wyłączyć dostęp do kamery w każdej chwili
+
+## 🌐 Tryb Offline i Synchronizacja
+
+### Jak działa tryb offline?
+
+Aplikacja automatycznie wykrywa brak połączenia z internetem i przechodzi w **tryb offline**. Możesz kontynuować pracę normalnie - wszystkie Twoje zmiany zostaną zapisane lokalnie i automatycznie zsynchronizowane po powrocie połączenia.
+
+### Co możesz robić offline?
+
+W trybie offline masz dostęp do wszystkich funkcji:
+- ✅ Dodawanie nowych produktów (skanowanie lub ręcznie)
+- ✅ Edycja istniejących produktów
+- ✅ Zmiana statusu produktów
+- ✅ Usuwanie produktów
+- ✅ Wyszukiwanie i filtrowanie
+- ✅ Export do CSV
+
+### Wskaźniki statusu połączenia
+
+**W nagłówku aplikacji:**
+- 🟢 **Online** - zielona ikona WiFi = masz połączenie
+- 🟠 **Offline** - pomarańczowa przekreślona ikona WiFi = brak połączenia
+
+**Banner statusu (pokazuje się gdy jest offline lub są niesynchronizowane zmiany):**
+- Informuje o statusie połączenia
+- Pokazuje liczbę oczekujących zmian
+- Wyświetla czas ostatniej synchronizacji
+- Pozwala na manualną synchronizację
+
+### Automatyczna synchronizacja
+
+Gdy odzyskasz połączenie z internetem:
+1. Zobaczysz powiadomienie: **"Połączenie przywrócone"**
+2. Aplikacja automatycznie rozpocznie synchronizację (1 sekunda delay)
+3. Wszystkie zmiany zostaną wysłane w kolejności ich wykonania
+4. Po zakończeniu zobaczysz potwierdzenie
+
+### Ręczna synchronizacja
+
+Możesz ręcznie wymусić synchronizację na 2 sposoby:
+
+**1. Z banneru statusu:**
+- Kliknij przycisk **"Synchronizuj"** w bannerze (pojawia się gdy są oczekujące zmiany)
+
+**2. Z ustawień synchronizacji:**
+- Kliknij przycisk **"Synchronizacja"** w sekcji Szybkie Akcje
+- Zobaczysz szczegółowy status synchronizacji
+- Kliknij **"Synchronizuj Teraz"** aby wymusić synchronizację
+
+### Dialog Ustawień Synchronizacji
+
+Aby otworzyć szczegółowe ustawienia:
+1. Znajdź przycisk **"Synchronizacja"** w panelu Szybkie Akcje
+2. Kliknij aby otworzyć dialog
+3. Zobaczysz:
+   - Status połączenia (Online/Offline)
+   - Liczbę oczekujących zmian
+   - Czas ostatniej synchronizacji
+   - Przyciski do manualnej synchronizacji lub czyszczenia kolejki
+
+### Rozwiązywanie problemów z synchronizacją
+
+**Problem:** Zmiany nie synchronizują się automatycznie
+- Sprawdź czy masz połączenie z internetem (ikona w nagłówku)
+- Spróbuj ręcznej synchronizacji z banneru lub ustawień
+- Odśwież stronę i spróbuj ponownie
+
+**Problem:** Błąd synchronizacji
+- Banner pokaże komunikat o błędzie
+- Sprawdź połączenie internetowe
+- Spróbuj ponownie za chwilę
+- Jeśli problem się powtarza, możesz wyczyścić kolejkę (opcja nuklearna - straci niesynchronizowane zmiany)
+
+**Problem:** Zbyt wiele oczekujących zmian
+- Aplikacja automatycznie optymalizuje kolejkę (łączy podobne operacje)
+- Jeśli masz bardzo dużo zmian, synchronizacja może potrwać kilka sekund
+- Poczekaj aż synchronizacja się zakończy
+
+### Powiadomienia
+
+Aplikacja pokazuje automatyczne powiadomienia:
+- 🟢 **"Połączenie przywrócone"** - gdy wracasz online
+- 🟠 **"Brak połączenia"** - gdy tracisz połączenie
+- ✅ **"Synchronizacja zakończona"** - po udanej synchronizacji
+- ❌ **"Błąd synchronizacji"** - gdy coś poszło nie tak
+
+### Bezpieczeństwo danych w trybie offline
+
+- Wszystkie zmiany są zapisywane lokalnie na Twoim urządzeniu
+- Kolejka synchronizacji jest przechowywana bezpiecznie
+- Dane nie są tracone nawet jeśli zamkniesz aplikację
+- Po otwarciu aplikacji, kolejka synchronizacji zostanie przywrócona
+- Gdy odzyskasz połączenie, zmiany zostaną automatycznie zsynchronizowane

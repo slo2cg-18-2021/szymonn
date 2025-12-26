@@ -12,6 +12,13 @@ This is a focused inventory tool with several interconnected features (barcode s
 
 ## Essential Features
 
+### Offline Mode with Synchronization
+- **Functionality**: Detects network connectivity and queues changes for automatic sync when connection is restored
+- **Purpose**: Ensures uninterrupted workflow even without internet, preventing data loss
+- **Trigger**: Network disconnection/reconnection detected automatically
+- **Progression**: User makes changes offline → Changes queued locally → Connection restored → Auto-sync initiated → User notified of sync status
+- **Success criteria**: All changes made offline are preserved and synced when online; user sees clear status indicator; sync happens automatically and reliably
+
 ### Barcode Scanner Input
 - **Functionality**: Accepts barcode input from mobile scanner apps or physical scanners (keyboard wedge mode)
 - **Purpose**: Enables quick product registration without manual typing
@@ -54,6 +61,10 @@ This is a focused inventory tool with several interconnected features (barcode s
 - **Missing Required Fields**: Prevent submission and highlight required fields with helpful messages
 - **Long Product Lists**: Implement pagination or virtual scrolling for performance with large inventories
 - **Barcode Scanner Not Recognized**: Provide manual barcode entry option and help text
+- **Network Interruption**: Queue changes locally and auto-sync when connection restored
+- **Sync Conflicts**: Apply last-write-wins strategy with operation merging to prevent data loss
+- **Queue Overflow**: Merge redundant operations (e.g., multiple updates to same product)
+- **Manual Sync Trigger**: Allow users to manually trigger sync via settings dialog
 
 ## Design Direction
 The design should evoke efficiency, organization, and professional trustworthiness. The interface should feel like a modern business tool - clean and systematic without being cold, with subtle warmth that reflects the personal service nature of a salon business.

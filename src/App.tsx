@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Product, ProductStatus } from '@/lib/types'
 import { BarcodeScanner } from '@/components/BarcodeScanner'
@@ -6,6 +6,9 @@ import { ProductFormDialog } from '@/components/ProductFormDialog'
 import { ProductTable } from '@/components/ProductTable'
 import { ProductCard } from '@/components/ProductCard'
 import { StatsCards } from '@/components/StatsCards'
+import { OfflineStatusBanner } from '@/components/OfflineStatusBanner'
+import { ConnectionIndicator } from '@/components/ConnectionIndicator'
+import { SyncSettingsDialog } from '@/components/SyncSettingsDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -13,6 +16,7 @@ import { Plus, Download, Upload, MagnifyingGlass, FunnelSimple } from '@phosphor
 import { exportToCSV, parseCSV } from '@/lib/csv'
 import { toast, Toaster } from 'sonner'
 import { useIsMobile } from '@/hooks/use-mobile'
+import { useOfflineSync } from '@/hooks/use-offline-sync'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { PRODUCT_CATEGORIES } from '@/lib/types'
 import { motion } from 'framer-motion'
@@ -26,6 +30,41 @@ function App() {
   const [statusFilter, setStatusFilter] = useState<ProductStatus | 'all'>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const isMobile = useIsMobile()
+  
+  const { 
+    isOnline,
+    queueCreateProduct, 
+    queueUpdateProduct, 
+    queueDeleteProduct 
+  } = useOfflineSync()
+
+  useEffect(() => {
+    let wasOnline = navigator.onLine
+
+    const handleOnlineStatus = () => {
+      const isCurrentlyOnline = navigator.onLine
+      
+      if (!wasOnline && isCurrentlyOnline) {
+        toast.success('Połączenie przywrócone', {
+          description: 'Zmiany zostaną zsynchronizowane automatycznie'
+        })
+      } else if (wasOnline && !isCurrentlyOnline) {
+        toast.warning('Brak połączenia', {
+          description: 'Pracujesz w trybie offline'
+        })
+      }
+      
+      wasOnline = isCurrentlyOnline
+    }
+
+    window.addEventListener('online', handleOnlineStatus)
+    window.addEventListener('offline', handleOnlineStatus)
+
+    return () => {
+      window.removeEventListener('online', handleOnlineStatus)
+      window.removeEventListener('offline', handleOnlineStatus)
+    }
+  }, [])
 
   const filteredProducts = useMemo(() => {
     return (products || []).filter(product => {
@@ -67,13 +106,17 @@ function App() {
 
   const handleSaveProduct = (productData: Omit<Product, 'id' | 'updatedAt'>) => {
     if (editingProduct) {
+      const updatedProduct = { 
+        ...productData, 
+        id: editingProduct.id, 
+        updatedAt: new Date().toISOString() 
+      }
       setProducts((currentProducts) =>
         (currentProducts || []).map(p =>
-          p.id === editingProduct.id
-            ? { ...productData, id: p.id, updatedAt: new Date().toISOString() }
-            : p
+          p.id === editingProduct.id ? updatedProduct : p
         )
       )
+      queueUpdateProduct(updatedProduct)
       toast.success('Produkt zaktualizowany pomyślnie')
     } else {
       const newProduct: Product = {
@@ -82,6 +125,7 @@ function App() {
         updatedAt: new Date().toISOString()
       }
       setProducts((currentProducts) => [...(currentProducts || []), newProduct])
+      queueCreateProduct(newProduct)
       toast.success('Produkt dodany pomyślnie')
     }
     
@@ -96,17 +140,24 @@ function App() {
 
   const handleDeleteProduct = (id: string) => {
     setProducts((currentProducts) => (currentProducts || []).filter(p => p.id !== id))
+    queueDeleteProduct(id)
     toast.success('Produkt usunięty')
   }
 
   const handleStatusChange = (id: string, status: ProductStatus) => {
+    const updatedProduct = (products || []).find(p => p.id === id)
+    if (!updatedProduct) return
+    
+    const newProduct = {
+      ...updatedProduct,
+      status,
+      updatedAt: new Date().toISOString()
+    }
+    
     setProducts((currentProducts) =>
-      (currentProducts || []).map(p =>
-        p.id === id
-          ? { ...p, status, updatedAt: new Date().toISOString() }
-          : p
-      )
+      (currentProducts || []).map(p => p.id === id ? newProduct : p)
     )
+    queueUpdateProduct(newProduct)
     toast.success('Status zaktualizowany')
   }
 
@@ -181,13 +232,18 @@ function App() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <h1 className="text-2xl sm:text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Magazyn Salonu
-          </h1>
+          <div className="flex items-start justify-between gap-4 mb-2">
+            <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              Magazyn Salonu
+            </h1>
+            <ConnectionIndicator />
+          </div>
           <p className="text-muted-foreground text-sm sm:text-lg">
             Zarządzaj produktami przez skanowanie kodów
           </p>
         </motion.header>
+
+        <OfflineStatusBanner />
 
         <motion.div 
           className="mb-4 sm:mb-6"
@@ -219,24 +275,29 @@ function App() {
                   Dodaj Ręcznie
                 </Button>
                 
-                <Button 
-                  onClick={handleExport} 
-                  variant="outline"
-                  className="w-full h-11 sm:h-auto"
-                  disabled={(products || []).length === 0}
-                >
-                  <Download className="w-5 h-5 mr-2" />
-                  Eksportuj CSV
-                </Button>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button 
+                    onClick={handleExport} 
+                    variant="outline"
+                    className="h-11 sm:h-auto"
+                    disabled={(products || []).length === 0}
+                  >
+                    <Download className="w-5 h-5 mr-2" />
+                    <span className="hidden sm:inline">Eksportuj</span>
+                  </Button>
+                  
+                  <Button 
+                    variant="outline"
+                    className="h-11 sm:h-auto"
+                    onClick={() => document.getElementById('csv-upload')?.click()}
+                  >
+                    <Upload className="w-5 h-5 mr-2" />
+                    <span className="hidden sm:inline">Importuj</span>
+                  </Button>
+                </div>
                 
-                <Button 
-                  variant="outline"
-                  className="w-full h-11 sm:h-auto"
-                  onClick={() => document.getElementById('csv-upload')?.click()}
-                >
-                  <Upload className="w-5 h-5 mr-2" />
-                  Importuj CSV
-                </Button>
+                <SyncSettingsDialog />
+                
                 <input
                   id="csv-upload"
                   type="file"

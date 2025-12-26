@@ -43,6 +43,7 @@
   --status-available: oklch(0.65 0.18 155);
   --status-in-use: oklch(0.75 0.15 75);
   --status-sold: oklch(0.60 0.15 240);
+  --status-syncing: oklch(0.68 0.19 25);
 
   --radius: 0.75rem;
 }
