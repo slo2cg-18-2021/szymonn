@@ -44,6 +44,7 @@ export function ProductTable({ products, onEdit, onDelete, onStatusChange }: Pro
               <TableHead className="font-semibold">Nazwa</TableHead>
               <TableHead className="font-semibold">Kategoria</TableHead>
               <TableHead className="font-semibold">Cena</TableHead>
+              <TableHead className="font-semibold">Ilość</TableHead>
               <TableHead className="font-semibold">Data Zakupu</TableHead>
               <TableHead className="font-semibold">Status</TableHead>
               <TableHead className="font-semibold text-right">Akcje</TableHead>
@@ -56,6 +57,7 @@ export function ProductTable({ products, onEdit, onDelete, onStatusChange }: Pro
                 <TableCell className="font-medium">{product.name}</TableCell>
                 <TableCell>{product.category}</TableCell>
                 <TableCell>${product.price.toFixed(2)}</TableCell>
+                <TableCell>{product.quantity}</TableCell>
                 <TableCell>{new Date(product.purchaseDate).toLocaleDateString('pl-PL')}</TableCell>
                 <TableCell>
                   <Select

@@ -6,6 +6,7 @@ export interface Product {
   name: string
   category: string
   price: number
+  quantity: number
   purchaseDate: string
   status: ProductStatus
   notes?: string

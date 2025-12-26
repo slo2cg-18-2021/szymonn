@@ -104,23 +104,14 @@ function App() {
     const existingProduct = (products || []).find(p => p.barcode === barcode)
     
     if (existingProduct) {
-      toast.info('Produkt już istnieje', {
-        description: `${existingProduct.name} - Czy chcesz go edytować?`,
-        action: {
-          label: 'Edytuj',
-          onClick: () => {
-            setEditingProduct(existingProduct)
-            setScannedBarcode('')
-            setDialogOpen(true)
-          }
-        }
+      setEditingProduct(existingProduct)
+      setDialogOpen(true)
+      toast.info('Produkt już istnieje - edytuj', {
+        duration: 2000
       })
     } else {
       setScannedBarcode(barcode)
       setDialogOpen(true)
-      toast.success('Kod zeskanowany!', {
-        description: 'Dodaj szczegóły produktu aby zapisać.'
-      })
     }
   }
 
@@ -137,7 +128,7 @@ function App() {
         )
       )
       queueUpdateProduct(updatedProduct)
-      toast.success('Produkt zaktualizowany pomyślnie')
+      toast.success('Produkt zaktualizowany', { duration: 2000 })
     } else {
       const newProduct: Product = {
         ...productData,
@@ -146,7 +137,7 @@ function App() {
       }
       setProducts((currentProducts) => [...(currentProducts || []), newProduct])
       queueCreateProduct(newProduct)
-      toast.success('Produkt dodany pomyślnie')
+      toast.success('Produkt dodany', { duration: 2000 })
     }
     
     setScannedBarcode('')

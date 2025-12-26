@@ -28,6 +28,7 @@ export function ProductFormDialog({
     name: '',
     category: 'Szampon',
     price: '',
+    quantity: '1',
     purchaseDate: new Date().toISOString().split('T')[0],
     status: 'available' as ProductStatus,
     notes: ''
@@ -40,6 +41,7 @@ export function ProductFormDialog({
         name: existingProduct.name,
         category: existingProduct.category,
         price: existingProduct.price.toString(),
+        quantity: existingProduct.quantity.toString(),
         purchaseDate: existingProduct.purchaseDate,
         status: existingProduct.status,
         notes: existingProduct.notes || ''
@@ -50,6 +52,7 @@ export function ProductFormDialog({
         name: '',
         category: 'Szampon',
         price: '',
+        quantity: '1',
         purchaseDate: new Date().toISOString().split('T')[0],
         status: 'available',
         notes: ''
@@ -66,6 +69,7 @@ export function ProductFormDialog({
       name: formData.name,
       category: formData.category,
       price: parseFloat(formData.price),
+      quantity: parseInt(formData.quantity) || 1,
       purchaseDate: formData.purchaseDate,
       status: formData.status,
       notes: formData.notes
@@ -145,7 +149,20 @@ export function ProductFormDialog({
               </div>
             </div>
 
-            <Separator />
+            <div className="grid gap-2">
+              <Label htmlFor="quantity">Ilość *</Label>
+              <Input
+                id="quantity"
+                type="number"
+                min="1"
+                step="1"
+                value={formData.quantity}
+                onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                placeholder="1"
+                required
+                className="h-11"
+              />
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">

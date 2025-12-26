@@ -60,6 +60,10 @@ export function ProductCard({ product, onEdit, onDelete, onStatusChange }: Produ
             <p className="text-sm font-medium">${product.price.toFixed(2)}</p>
           </div>
           <div>
+            <p className="text-xs text-muted-foreground">Ilość</p>
+            <p className="text-sm font-medium">{product.quantity}</p>
+          </div>
+          <div>
             <p className="text-xs text-muted-foreground">Data Zakupu</p>
             <p className="text-sm font-medium">{new Date(product.purchaseDate).toLocaleDateString('pl-PL')}</p>
           </div>
