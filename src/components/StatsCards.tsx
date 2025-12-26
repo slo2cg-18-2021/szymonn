@@ -14,7 +14,7 @@ export function StatsCards({ products }: StatsCardsProps) {
   
   const totalValue = products
     .filter(p => p.status !== 'sold')
-    .reduce((sum, p) => sum + p.price, 0)
+    .reduce((sum, p) => sum + (p.price * p.quantity), 0)
 
   const stats = [
     {
