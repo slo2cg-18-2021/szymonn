@@ -252,8 +252,8 @@ function App() {
   }
 
   const handleDialogClose = (open: boolean) => {
-    setDialogOpen(open)
     if (!open) {
+      setDialogOpen(false)
       setScannedBarcode('')
       setEditingProduct(undefined)
     }
