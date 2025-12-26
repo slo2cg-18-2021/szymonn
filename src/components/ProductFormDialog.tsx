@@ -35,30 +35,33 @@ export function ProductFormDialog({
   })
 
   useEffect(() => {
-    if (existingProduct) {
-      setFormData({
-        barcode: existingProduct.barcode,
-        name: existingProduct.name,
-        category: existingProduct.category,
-        price: existingProduct.price.toString(),
-        quantity: existingProduct.quantity.toString(),
-        purchaseDate: existingProduct.purchaseDate,
-        status: existingProduct.status,
-        notes: existingProduct.notes || ''
-      })
-    } else {
-      setFormData({
-        barcode: initialBarcode,
-        name: '',
-        category: 'Szampon',
-        price: '',
-        quantity: '1',
-        purchaseDate: new Date().toISOString().split('T')[0],
-        status: 'available',
-        notes: ''
-      })
+    // Resetuj formularz tylko gdy dialog się otwiera
+    if (open) {
+      if (existingProduct) {
+        setFormData({
+          barcode: existingProduct.barcode,
+          name: existingProduct.name,
+          category: existingProduct.category,
+          price: existingProduct.price.toString(),
+          quantity: existingProduct.quantity.toString(),
+          purchaseDate: existingProduct.purchaseDate,
+          status: existingProduct.status,
+          notes: existingProduct.notes || ''
+        })
+      } else {
+        setFormData({
+          barcode: initialBarcode,
+          name: '',
+          category: 'Szampon',
+          price: '',
+          quantity: '1',
+          purchaseDate: new Date().toISOString().split('T')[0],
+          status: 'available',
+          notes: ''
+        })
+      }
     }
-  }, [initialBarcode, existingProduct, open])
+  }, [open, initialBarcode, existingProduct])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
