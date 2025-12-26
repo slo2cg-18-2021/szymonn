@@ -229,11 +229,8 @@ function App() {
   const handleDialogClose = (open: boolean) => {
     setDialogOpen(open)
     if (!open) {
-      // Opóźnienie, aby dialog zdążył się zamknąć
-      setTimeout(() => {
-        setScannedBarcode('')
-        setEditingProduct(undefined)
-      }, 0)
+      setScannedBarcode('')
+      setEditingProduct(undefined)
     }
   }
 
