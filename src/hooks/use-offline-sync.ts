@@ -32,7 +32,21 @@ export function useOfflineSync() {
     setSyncError(null)
 
     try {
-      await new Promise(resolve => setTimeout(resolve, 500))
+      // Wyślij operacje na serwer
+      const apiUrl = process.env.VITE_API_URL || window.location.origin
+      const response = await fetch(`${apiUrl}/api/products`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          operations: syncQueue.operations
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.statusText}`)
+      }
 
       setSyncQueue((current) => ({
         operations: [],

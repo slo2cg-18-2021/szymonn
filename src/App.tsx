@@ -39,6 +39,26 @@ function App() {
   } = useOfflineSync()
 
   useEffect(() => {
+    // Załaduj produkty z serwera
+    const loadProductsFromServer = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || window.location.origin
+        const response = await fetch(`${apiUrl}/api/products`)
+        if (response.ok) {
+          const data = await response.json()
+          if (data.products && data.products.length > 0) {
+            setProducts(data.products)
+          }
+        }
+      } catch (error) {
+        console.error('Error loading products from server:', error)
+      }
+    }
+
+    loadProductsFromServer()
+  }, [setProducts])
+
+  useEffect(() => {
     let wasOnline = navigator.onLine
 
     const handleOnlineStatus = () => {
