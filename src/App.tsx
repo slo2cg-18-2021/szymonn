@@ -6,6 +6,7 @@ import { ProductFormDialog } from '@/components/ProductFormDialog'
 import { ProductTable } from '@/components/ProductTable'
 import { ProductCard } from '@/components/ProductCard'
 import { StatsCards } from '@/components/StatsCards'
+import { InventoryManagement } from '@/components/InventoryManagement'
 import { OfflineStatusBanner } from '@/components/OfflineStatusBanner'
 import { ConnectionIndicator } from '@/components/ConnectionIndicator'
 import { SyncSettingsDialog } from '@/components/SyncSettingsDialog'
@@ -28,6 +29,7 @@ function App() {
   const [scannedBarcode, setScannedBarcode] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<ProductStatus | 'all'>('all')
+  const [currentTab, setCurrentTab] = useState<'add' | 'manage'>('add')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const isMobile = useIsMobile()
   
@@ -146,6 +148,14 @@ function App() {
     setDialogOpen(false)
     setScannedBarcode('')
     setEditingProduct(undefined)
+  }
+
+  const handleUpdateProduct = (updatedProduct: Product) => {
+    setProducts((current) =>
+      (current || []).map(p => p.id === updatedProduct.id ? updatedProduct : p)
+    )
+    queueUpdateProduct(updatedProduct)
+    toast.success('Stan produktu zaktualizowany', { duration: 2000 })
   }
 
   const handleEditProduct = (product: Product) => {
@@ -276,12 +286,22 @@ function App() {
           <StatsCards products={products || []} />
         </motion.div>
 
-        <motion.div 
-          className="grid lg:grid-cols-[380px,1fr] gap-4 sm:gap-6 mb-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-        >
+        <div className="mb-6">
+          <Tabs value={currentTab} onValueChange={(value: any) => setCurrentTab(value)} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="add">Dodaj Produkty</TabsTrigger>
+              <TabsTrigger value="manage">Zarządzaj Stanami</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        {currentTab === 'add' ? (
+          <motion.div 
+            className="grid lg:grid-cols-[380px,1fr] gap-4 sm:gap-6 mb-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+          >
           <div className="bg-card border border-border rounded-xl p-4 sm:p-6 h-fit">
             <h2 className="text-lg sm:text-xl font-semibold mb-4">Szybkie Akcje</h2>
             
@@ -404,6 +424,19 @@ function App() {
             </div>
           </div>
         </motion.div>
+        ) : (
+          <motion.div
+            className="w-full"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+          >
+            <InventoryManagement 
+              products={products || []} 
+              onUpdateProduct={handleUpdateProduct}
+            />
+          </motion.div>
+        )}
 
         <ProductFormDialog
           open={dialogOpen}
