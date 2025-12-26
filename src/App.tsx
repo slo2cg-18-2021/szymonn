@@ -7,6 +7,7 @@ import { ProductTable } from '@/components/ProductTable'
 import { ProductCard } from '@/components/ProductCard'
 import { StatsCards } from '@/components/StatsCards'
 import { InventoryManagement } from '@/components/InventoryManagement'
+import { ProductEditDialog } from '@/components/ProductEditDialog'
 import { OfflineStatusBanner } from '@/components/OfflineStatusBanner'
 import { ConnectionIndicator } from '@/components/ConnectionIndicator'
 import { SyncSettingsDialog } from '@/components/SyncSettingsDialog'
@@ -25,6 +26,7 @@ import { motion } from 'framer-motion'
 function App() {
   const [products, setProducts] = useKV<Product[]>('salon-products', [])
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | undefined>()
   const [scannedBarcode, setScannedBarcode] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -159,8 +161,11 @@ function App() {
   }
 
   const handleEditProduct = (product: Product) => {
-    setEditingProduct(product)
-    setDialogOpen(true)
+    setProducts((current) =>
+      (current || []).map(p => p.id === product.id ? product : p)
+    )
+    queueUpdateProduct(product)
+    toast.success('Produkt zaktualizowany', { duration: 2000 })
   }
 
   const handleDeleteProduct = (id: string) => {
@@ -426,17 +431,34 @@ function App() {
         </motion.div>
         ) : (
           <motion.div
-            className="w-full"
+            className="w-full space-y-6"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.4, delay: 0.2 }}
           >
+            <div className="flex gap-3 mb-4">
+              <Button 
+                onClick={() => setEditDialogOpen(true)}
+                variant="outline"
+                className="flex-1 h-11"
+              >
+                <MagnifyingGlass className="w-5 h-5 mr-2" />
+                Edytuj Dane Produktu
+              </Button>
+            </div>
             <InventoryManagement 
               products={products || []} 
               onUpdateProduct={handleUpdateProduct}
             />
           </motion.div>
         )}
+
+        <ProductEditDialog
+          open={editDialogOpen}
+          onOpenChange={setEditDialogOpen}
+          onSave={handleEditProduct}
+          products={products || []}
+        />
 
         <ProductFormDialog
           open={dialogOpen}

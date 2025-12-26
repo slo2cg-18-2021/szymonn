@@ -78,6 +78,7 @@ export function ProductFormDialog({
       notes: formData.notes
     })
 
+    // Zamknij dialog bezpośrednio
     onOpenChange(false)
   }
 
