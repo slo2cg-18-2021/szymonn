@@ -253,8 +253,6 @@ function App() {
       setDialogOpen(false)
       setScannedBarcode('')
       setEditingProduct(undefined)
-    } else {
-      setDialogOpen(true)
     }
   }
 
