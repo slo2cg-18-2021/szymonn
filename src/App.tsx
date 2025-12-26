@@ -140,6 +140,7 @@ function App() {
       toast.success('Produkt dodany', { duration: 2000 })
     }
     
+    setDialogOpen(false)
     setScannedBarcode('')
     setEditingProduct(undefined)
   }
