@@ -1,89 +1,73 @@
 import JSZip from 'jszip'
 
-  
-    { path: '/index.html'
-  
-    { path: '/tailwind.co
+export async function exportApp() {
+  const zip = new JSZip()
+
+  const filesToExport = [
+    { path: '/index.html', type: 'text' },
+    { path: '/tailwind.config.js', type: 'text' },
     { path: '/README.md', type: 'text' },
-    { path: '/INSTRUKCJA.md', type: 'text' }
+    { path: '/INSTRUKCJA.md', type: 'text' },
     { path: '/src/App.tsx', type: 'text' },
     { path: '/src/main.css', type: 'text' },
-    { path: '/src/ErrorFallback.tsx', type: 'text'
-    { path: '/src/lib/utils.ts', type: 'text' }
-    { path: '/README.md', type: 'text' },
-    { path: '/src/hooks/use-online-sta
-    { path: '/src/components/BarcodeScanner.t
-    { path: '/src/components/ProductTable.tsx',
-    { path: '/src/App.tsx', type: 'text' },
-    { path: '/src/components/ConnectionIndic
-    { path: '/src/main.css', type: 'text' },
-  for (const file of filesToExport) {
-      const response = await fetch(file.path)
-        const content = await response.text()
-      }
-      console.warn(`Nie można pobrać pliku: ${fi
-  }
-  const uiComponentsDir = zip.folder('src/components/ui
-    'accordion.tsx', 'alert-dialog.tsx', 'alert.tsx', 'aspect-
-    'calendar.tsx', 'card.tsx', 'carousel.tsx', 'chart.tsx',
-    'dialog.tsx', 'drawer.tsx', 'dropdown-menu.tsx', 'form.tsx',
-    'menubar.tsx', 'navigation-menu.tsx', 'pagination.tsx', 'popover
-    'select.tsx', 'separator.tsx', 'sheet.tsx', 'sidebar.tsx',
-    'table.tsx', 'tabs.tsx', 'textarea.tsx', 'toggle-group.tsx
+    { path: '/src/ErrorFallback.tsx', type: 'text' },
+    { path: '/src/lib/utils.ts', type: 'text' },
+    { path: '/src/hooks/use-online-status.ts', type: 'text' },
+    { path: '/src/components/BarcodeScanner.tsx', type: 'text' },
+    { path: '/src/components/ProductTable.tsx', type: 'text' },
+    { path: '/src/components/ConnectionIndicator.tsx', type: 'text' },
   ]
+
+  for (const file of filesToExport) {
+    try {
+      const response = await fetch(file.path)
+      if (response.ok) {
+        const content = await response.text()
+        zip.file(file.path, content)
+      }
+    } catch (error) {
+      console.warn(`Nie można pobrać pliku: ${file.path}`)
+    }
+  }
+
+  const uiComponentsDir = zip.folder('src/components/ui')
+  const uiComponents = [
+    'accordion.tsx', 'alert-dialog.tsx', 'alert.tsx', 'aspect-ratio.tsx',
+    'avatar.tsx', 'badge.tsx', 'breadcrumb.tsx', 'button.tsx',
+    'calendar.tsx', 'card.tsx', 'carousel.tsx', 'chart.tsx',
+    'checkbox.tsx', 'collapsible.tsx', 'command.tsx', 'context-menu.tsx',
+    'dialog.tsx', 'drawer.tsx', 'dropdown-menu.tsx', 'form.tsx',
+    'hover-card.tsx', 'input-otp.tsx', 'input.tsx', 'label.tsx',
+    'menubar.tsx', 'navigation-menu.tsx', 'pagination.tsx', 'popover.tsx',
+    'progress.tsx', 'radio-group.tsx', 'resizable.tsx', 'scroll-area.tsx',
+    'select.tsx', 'separator.tsx', 'sheet.tsx', 'sidebar.tsx',
+    'skeleton.tsx', 'slider.tsx', 'sonner.tsx', 'switch.tsx',
+    'table.tsx', 'tabs.tsx', 'textarea.tsx', 'toggle-group.tsx',
+    'toggle.tsx', 'tooltip.tsx',
+  ]
+
   for (const component of uiComponents) {
+    try {
       const response = await fetch(`/src/components/ui/${component}`)
+      if (response.ok) {
         const content = await response.text()
-  ]
-  
-  for (const file of filesToExport) {
-  const b
-      const response = await fetch(file.path)
-  link.href = url
-        const content = await response.text()
-  document.body.removeChild(link)
+        uiComponentsDir?.file(component, content)
       }
-
-
-
+    } catch (error) {
+      console.warn(`Nie można pobrać UI komponenty: ${component}`)
+    }
   }
 
-
-
-
-
-    'calendar.tsx', 'card.tsx', 'carousel.tsx', 'chart.tsx',
-
-    'dialog.tsx', 'drawer.tsx', 'dropdown-menu.tsx', 'form.tsx',
-
-
-
-    'select.tsx', 'separator.tsx', 'sheet.tsx', 'sidebar.tsx',
-
-
-
-
-  
-
-
-
-
-
-
-
-
-
-
-  }
-
-
-
+  const blob = await zip.generateAsync({ type: 'blob' })
   const url = URL.createObjectURL(blob)
 
+  const link = document.createElement('a')
   link.href = url
+  link.download = 'spark-template-app.zip'
 
   document.body.appendChild(link)
-
+  link.click()
   document.body.removeChild(link)
 
+  URL.revokeObjectURL(url)
 }
