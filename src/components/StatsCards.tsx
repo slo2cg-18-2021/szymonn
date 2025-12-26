@@ -14,6 +14,9 @@ export function StatsCards({ products }: StatsCardsProps) {
   
   const totalValue = products
     .reduce((sum, p) => sum + (p.price * p.statuses.filter(s => s !== 'sold').length), 0)
+  
+  const soldValue = products
+    .reduce((sum, p) => sum + (p.price * p.statuses.filter(s => s === 'sold').length), 0)
 
   const stats = [
     {
@@ -67,6 +70,18 @@ export function StatsCards({ products }: StatsCardsProps) {
         <CardContent>
           <div className="text-2xl sm:text-3xl font-bold">${totalValue.toFixed(2)}</div>
           <p className="text-xs text-muted-foreground mt-1">Bez sprzedanych</p>
+        </CardContent>
+      </Card>
+      
+      <Card className="col-span-2 md:col-span-2 lg:col-span-1">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
+            Wartość Sprzedanych
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-2xl sm:text-3xl font-bold">${soldValue.toFixed(2)}</div>
+          <p className="text-xs text-muted-foreground mt-1">{soldCount} szt.</p>
         </CardContent>
       </Card>
     </div>
