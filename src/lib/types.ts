@@ -13,17 +13,17 @@ export interface Product {
 }
 
 export const PRODUCT_CATEGORIES = [
-  'Shampoo',
-  'Conditioner',
-  'Hair Color',
-  'Styling Product',
-  'Treatment',
-  'Tools',
-  'Other'
+  'Szampon',
+  'Odżywka',
+  'Farba do włosów',
+  'Produkt stylizujący',
+  'Kuracja',
+  'Narzędzia',
+  'Inne'
 ] as const
 
 export const STATUS_LABELS: Record<ProductStatus, string> = {
-  'available': 'Available',
-  'in-use': 'In Use',
-  'sold': 'Sold'
+  'available': 'Dostępny',
+  'in-use': 'W Użyciu',
+  'sold': 'Sprzedany'
 }

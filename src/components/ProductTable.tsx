@@ -28,8 +28,8 @@ export function ProductTable({ products, onEdit, onDelete, onStatusChange }: Pro
   if (products.length === 0) {
     return (
       <div className="text-center py-16 border border-border rounded-lg bg-card">
-        <p className="text-lg text-muted-foreground">No products found</p>
-        <p className="text-sm text-muted-foreground mt-2">Scan a barcode or import CSV to get started</p>
+        <p className="text-lg text-muted-foreground">Brak produktów</p>
+        <p className="text-sm text-muted-foreground mt-2">Zeskanuj kod lub zaimportuj CSV</p>
       </div>
     )
   }
@@ -40,13 +40,13 @@ export function ProductTable({ products, onEdit, onDelete, onStatusChange }: Pro
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
-              <TableHead className="font-semibold">Barcode</TableHead>
-              <TableHead className="font-semibold">Name</TableHead>
-              <TableHead className="font-semibold">Category</TableHead>
-              <TableHead className="font-semibold">Price</TableHead>
-              <TableHead className="font-semibold">Purchase Date</TableHead>
+              <TableHead className="font-semibold">Kod</TableHead>
+              <TableHead className="font-semibold">Nazwa</TableHead>
+              <TableHead className="font-semibold">Kategoria</TableHead>
+              <TableHead className="font-semibold">Cena</TableHead>
+              <TableHead className="font-semibold">Data Zakupu</TableHead>
               <TableHead className="font-semibold">Status</TableHead>
-              <TableHead className="font-semibold text-right">Actions</TableHead>
+              <TableHead className="font-semibold text-right">Akcje</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -56,7 +56,7 @@ export function ProductTable({ products, onEdit, onDelete, onStatusChange }: Pro
                 <TableCell className="font-medium">{product.name}</TableCell>
                 <TableCell>{product.category}</TableCell>
                 <TableCell>${product.price.toFixed(2)}</TableCell>
-                <TableCell>{new Date(product.purchaseDate).toLocaleDateString()}</TableCell>
+                <TableCell>{new Date(product.purchaseDate).toLocaleDateString('pl-PL')}</TableCell>
                 <TableCell>
                   <Select
                     value={product.status}

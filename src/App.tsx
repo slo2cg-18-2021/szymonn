@@ -45,10 +45,10 @@ function App() {
     const existingProduct = (products || []).find(p => p.barcode === barcode)
     
     if (existingProduct) {
-      toast.info('Product already exists', {
-        description: `${existingProduct.name} - Do you want to edit it?`,
+      toast.info('Produkt już istnieje', {
+        description: `${existingProduct.name} - Czy chcesz go edytować?`,
         action: {
-          label: 'Edit',
+          label: 'Edytuj',
           onClick: () => {
             setEditingProduct(existingProduct)
             setScannedBarcode('')
@@ -59,8 +59,8 @@ function App() {
     } else {
       setScannedBarcode(barcode)
       setDialogOpen(true)
-      toast.success('Barcode scanned!', {
-        description: 'Add product details to save.'
+      toast.success('Kod zeskanowany!', {
+        description: 'Dodaj szczegóły produktu aby zapisać.'
       })
     }
   }
@@ -74,7 +74,7 @@ function App() {
             : p
         )
       )
-      toast.success('Product updated successfully')
+      toast.success('Produkt zaktualizowany pomyślnie')
     } else {
       const newProduct: Product = {
         ...productData,
@@ -82,7 +82,7 @@ function App() {
         updatedAt: new Date().toISOString()
       }
       setProducts((currentProducts) => [...(currentProducts || []), newProduct])
-      toast.success('Product added successfully')
+      toast.success('Produkt dodany pomyślnie')
     }
     
     setScannedBarcode('')
@@ -96,7 +96,7 @@ function App() {
 
   const handleDeleteProduct = (id: string) => {
     setProducts((currentProducts) => (currentProducts || []).filter(p => p.id !== id))
-    toast.success('Product deleted')
+    toast.success('Produkt usunięty')
   }
 
   const handleStatusChange = (id: string, status: ProductStatus) => {
@@ -107,7 +107,7 @@ function App() {
           : p
       )
     )
-    toast.success('Status updated')
+    toast.success('Status zaktualizowany')
   }
 
   const handleExport = () => {
@@ -116,12 +116,12 @@ function App() {
       : filteredProducts
     
     if (productsToExport.length === 0) {
-      toast.error('No products to export')
+      toast.error('Brak produktów do eksportu')
       return
     }
     
     exportToCSV(productsToExport)
-    toast.success(`Exported ${productsToExport.length} products`)
+    toast.success(`Wyeksportowano ${productsToExport.length} produktów`)
   }
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,7 +135,7 @@ function App() {
         const importedProducts = parseCSV(csvText)
         
         if (importedProducts.length === 0) {
-          toast.error('No valid products found in CSV')
+          toast.error('Brak poprawnych produktów w pliku CSV')
           return
         }
 
@@ -152,10 +152,10 @@ function App() {
         }))
 
         setProducts((currentProducts) => [...(currentProducts || []), ...newProducts])
-        toast.success(`Imported ${newProducts.length} products`)
+        toast.success(`Zaimportowano ${newProducts.length} produktów`)
       } catch (error) {
-        toast.error('Failed to import CSV', {
-          description: 'Please check the file format'
+        toast.error('Błąd importu CSV', {
+          description: 'Sprawdź format pliku'
         })
       }
     }
@@ -173,24 +173,24 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-secondary/20">
-      <Toaster position="top-right" richColors />
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <Toaster position={isMobile ? "top-center" : "top-right"} richColors />
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8 max-w-7xl">
         <motion.header 
-          className="mb-8"
+          className="mb-6 sm:mb-8"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
         >
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            Salon Inventory Manager
+          <h1 className="text-2xl sm:text-4xl font-bold mb-2 bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+            Magazyn Salonu
           </h1>
-          <p className="text-muted-foreground text-lg">
-            Track your products with barcode scanning
+          <p className="text-muted-foreground text-sm sm:text-lg">
+            Zarządzaj produktami przez skanowanie kodów
           </p>
         </motion.header>
 
         <motion.div 
-          className="mb-6"
+          className="mb-4 sm:mb-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, delay: 0.1 }}
@@ -199,13 +199,13 @@ function App() {
         </motion.div>
 
         <motion.div 
-          className="grid lg:grid-cols-[380px,1fr] gap-6 mb-6"
+          className="grid lg:grid-cols-[380px,1fr] gap-4 sm:gap-6 mb-6"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4, delay: 0.2 }}
         >
-          <div className="bg-card border border-border rounded-xl p-6 h-fit">
-            <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
+          <div className="bg-card border border-border rounded-xl p-4 sm:p-6 h-fit">
+            <h2 className="text-lg sm:text-xl font-semibold mb-4">Szybkie Akcje</h2>
             
             <div className="space-y-4">
               <BarcodeScanner onScan={handleScan} />
@@ -213,29 +213,29 @@ function App() {
               <div className="pt-4 border-t border-border space-y-3">
                 <Button 
                   onClick={() => setDialogOpen(true)} 
-                  className="w-full bg-accent hover:bg-accent/90"
+                  className="w-full bg-accent hover:bg-accent/90 h-11 sm:h-auto"
                 >
                   <Plus className="w-5 h-5 mr-2" />
-                  Add Manually
+                  Dodaj Ręcznie
                 </Button>
                 
                 <Button 
                   onClick={handleExport} 
                   variant="outline"
-                  className="w-full"
+                  className="w-full h-11 sm:h-auto"
                   disabled={(products || []).length === 0}
                 >
                   <Download className="w-5 h-5 mr-2" />
-                  Export CSV
+                  Eksportuj CSV
                 </Button>
                 
                 <Button 
                   variant="outline"
-                  className="w-full"
+                  className="w-full h-11 sm:h-auto"
                   onClick={() => document.getElementById('csv-upload')?.click()}
                 >
                   <Upload className="w-5 h-5 mr-2" />
-                  Import CSV
+                  Importuj CSV
                 </Button>
                 <input
                   id="csv-upload"
@@ -249,41 +249,41 @@ function App() {
           </div>
 
           <div className="space-y-4">
-            <div className="bg-card border border-border rounded-xl p-6">
+            <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
               <div className="flex items-center gap-3 mb-4">
                 <div className="relative flex-1">
                   <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                   <Input
-                    placeholder="Search products..."
+                    placeholder="Szukaj produktów..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-11"
+                    className="pl-11 h-11"
                   />
                 </div>
               </div>
               
               <div className="flex flex-col sm:flex-row gap-3">
                 <div className="flex items-center gap-2 flex-1">
-                  <FunnelSimple className="w-5 h-5 text-muted-foreground" />
+                  <FunnelSimple className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                   <Select value={statusFilter} onValueChange={(value: ProductStatus | 'all') => setStatusFilter(value)}>
-                    <SelectTrigger className="flex-1">
-                      <SelectValue placeholder="Filter by status" />
+                    <SelectTrigger className="flex-1 h-11">
+                      <SelectValue placeholder="Filtruj status" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="available">Available</SelectItem>
-                      <SelectItem value="in-use">In Use</SelectItem>
-                      <SelectItem value="sold">Sold</SelectItem>
+                      <SelectItem value="all">Wszystkie</SelectItem>
+                      <SelectItem value="available">Dostępne</SelectItem>
+                      <SelectItem value="in-use">W Użyciu</SelectItem>
+                      <SelectItem value="sold">Sprzedane</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 
                 <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Filter by category" />
+                  <SelectTrigger className="flex-1 h-11">
+                    <SelectValue placeholder="Filtruj kategorie" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="all">Wszystkie Kategorie</SelectItem>
                     {PRODUCT_CATEGORIES.map(cat => (
                       <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                     ))}
@@ -296,9 +296,9 @@ function App() {
               {isMobile ? (
                 <div className="space-y-3">
                   {filteredProducts.length === 0 ? (
-                    <div className="text-center py-16 border border-border rounded-lg bg-card">
-                      <p className="text-lg text-muted-foreground">No products found</p>
-                      <p className="text-sm text-muted-foreground mt-2">Scan a barcode or import CSV to get started</p>
+                    <div className="text-center py-12 sm:py-16 border border-border rounded-lg bg-card">
+                      <p className="text-base sm:text-lg text-muted-foreground">Brak produktów</p>
+                      <p className="text-sm text-muted-foreground mt-2">Zeskanuj kod lub zaimportuj CSV</p>
                     </div>
                   ) : (
                     filteredProducts.map(product => (

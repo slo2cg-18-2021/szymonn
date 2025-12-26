@@ -90,3 +90,26 @@
   background-color: var(--status-sold);
   color: white;
 }
+
+#barcode-reader {
+  width: 100%;
+  max-width: 100%;
+}
+
+#barcode-reader video {
+  width: 100%;
+  height: auto;
+  max-height: 400px;
+  object-fit: cover;
+  border-radius: 0.5rem;
+}
+
+#barcode-reader canvas {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  #barcode-reader video {
+    max-height: 300px;
+  }
+}

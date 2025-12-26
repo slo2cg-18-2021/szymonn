@@ -26,7 +26,7 @@ export function ProductFormDialog({
   const [formData, setFormData] = useState({
     barcode: initialBarcode,
     name: '',
-    category: 'Shampoo',
+    category: 'Szampon',
     price: '',
     purchaseDate: new Date().toISOString().split('T')[0],
     status: 'available' as ProductStatus,
@@ -48,7 +48,7 @@ export function ProductFormDialog({
       setFormData({
         barcode: initialBarcode,
         name: '',
-        category: 'Shampoo',
+        category: 'Szampon',
         price: '',
         purchaseDate: new Date().toISOString().split('T')[0],
         status: 'available',
@@ -76,45 +76,47 @@ export function ProductFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl">
-            {existingProduct ? 'Edit Product' : 'Add New Product'}
+          <DialogTitle className="text-xl sm:text-2xl">
+            {existingProduct ? 'Edytuj Produkt' : 'Dodaj Nowy Produkt'}
           </DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit}>
-          <div className="grid gap-5 py-4">
+          <div className="grid gap-4 sm:gap-5 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="barcode">Barcode *</Label>
+              <Label htmlFor="barcode">Kod Kreskowy *</Label>
               <Input
                 id="barcode"
                 value={formData.barcode}
                 onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                placeholder="Product barcode"
+                placeholder="Kod kreskowy produktu"
                 required
+                className="h-11"
               />
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="name">Product Name *</Label>
+              <Label htmlFor="name">Nazwa Produktu *</Label>
               <Input
                 id="name"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                placeholder="e.g., L'Oréal Professional Shampoo"
+                placeholder="np. L'Oréal Professional Szampon"
                 required
+                className="h-11"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="category">Category *</Label>
+                <Label htmlFor="category">Kategoria *</Label>
                 <Select
                   value={formData.category}
                   onValueChange={(value) => setFormData({ ...formData, category: value })}
                 >
-                  <SelectTrigger id="category">
+                  <SelectTrigger id="category" className="h-11">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -128,7 +130,7 @@ export function ProductFormDialog({
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="price">Price *</Label>
+                <Label htmlFor="price">Cena *</Label>
                 <Input
                   id="price"
                   type="number"
@@ -138,20 +140,22 @@ export function ProductFormDialog({
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
                   placeholder="0.00"
                   required
+                  className="h-11"
                 />
               </div>
             </div>
 
             <Separator />
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="purchaseDate">Purchase Date</Label>
+                <Label htmlFor="purchaseDate">Data Zakupu</Label>
                 <Input
                   id="purchaseDate"
                   type="date"
                   value={formData.purchaseDate}
                   onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
+                  className="h-11"
                 />
               </div>
 
@@ -161,7 +165,7 @@ export function ProductFormDialog({
                   value={formData.status}
                   onValueChange={(value: ProductStatus) => setFormData({ ...formData, status: value })}
                 >
-                  <SelectTrigger id="status">
+                  <SelectTrigger id="status" className="h-11">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -176,23 +180,23 @@ export function ProductFormDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="notes">Notes</Label>
+              <Label htmlFor="notes">Notatki</Label>
               <Textarea
                 id="notes"
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Additional information..."
+                placeholder="Dodatkowe informacje..."
                 rows={3}
               />
             </div>
           </div>
 
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
-              Cancel
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
+              Anuluj
             </Button>
-            <Button type="submit" className="bg-accent hover:bg-accent/90">
-              {existingProduct ? 'Save Changes' : 'Add Product'}
+            <Button type="submit" className="bg-accent hover:bg-accent/90 w-full sm:w-auto">
+              {existingProduct ? 'Zapisz Zmiany' : 'Dodaj Produkt'}
             </Button>
           </DialogFooter>
         </form>
