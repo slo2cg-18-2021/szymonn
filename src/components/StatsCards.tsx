@@ -8,13 +8,12 @@ interface StatsCardsProps {
 
 export function StatsCards({ products }: StatsCardsProps) {
   const totalProducts = products.length
-  const availableCount = products.filter(p => p.status === 'available').length
-  const inUseCount = products.filter(p => p.status === 'in-use').length
-  const soldCount = products.filter(p => p.status === 'sold').length
+  const availableCount = products.reduce((sum, p) => sum + p.statuses.filter(s => s === 'available').length, 0)
+  const inUseCount = products.reduce((sum, p) => sum + p.statuses.filter(s => s === 'in-use').length, 0)
+  const soldCount = products.reduce((sum, p) => sum + p.statuses.filter(s => s === 'sold').length, 0)
   
   const totalValue = products
-    .filter(p => p.status !== 'sold')
-    .reduce((sum, p) => sum + (p.price * p.quantity), 0)
+    .reduce((sum, p) => sum + (p.price * p.statuses.filter(s => s !== 'sold').length), 0)
 
   const stats = [
     {

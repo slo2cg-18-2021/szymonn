@@ -8,7 +8,7 @@ export interface Product {
   price: number
   quantity: number
   purchaseDate: string
-  status: ProductStatus
+  statuses: ProductStatus[]
   notes?: string
   updatedAt: string
 }

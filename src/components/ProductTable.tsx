@@ -1,29 +1,15 @@
-import { Product, STATUS_LABELS } from '@/lib/types'
+import { Product } from '@/lib/types'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Pencil, Trash } from '@phosphor-icons/react'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { ProductStatus } from '@/lib/types'
 
 interface ProductTableProps {
   products: Product[]
   onEdit: (product: Product) => void
   onDelete: (id: string) => void
-  onStatusChange: (id: string, status: ProductStatus) => void
 }
 
-export function ProductTable({ products, onEdit, onDelete, onStatusChange }: ProductTableProps) {
-  const getStatusClass = (status: ProductStatus) => {
-    switch (status) {
-      case 'available':
-        return 'status-available'
-      case 'in-use':
-        return 'status-in-use'
-      case 'sold':
-        return 'status-sold'
-    }
-  }
+export function ProductTable({ products, onEdit, onDelete }: ProductTableProps) {
 
   if (products.length === 0) {
     return (
@@ -45,39 +31,26 @@ export function ProductTable({ products, onEdit, onDelete, onStatusChange }: Pro
               <TableHead className="font-semibold">Kategoria</TableHead>
               <TableHead className="font-semibold">Cena</TableHead>
               <TableHead className="font-semibold">Ilość</TableHead>
+              <TableHead className="font-semibold">Dostępne</TableHead>
+              <TableHead className="font-semibold">W Użyciu</TableHead>
               <TableHead className="font-semibold">Data Zakupu</TableHead>
-              <TableHead className="font-semibold">Status</TableHead>
               <TableHead className="font-semibold text-right">Akcje</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {products.map((product) => (
+            {products.map((product) => {
+              const available = product.statuses.filter(s => s === 'available').length
+              const inUse = product.statuses.filter(s => s === 'in-use').length
+              return (
               <TableRow key={product.id} className="hover:bg-muted/30">
                 <TableCell className="font-mono text-sm">{product.barcode}</TableCell>
                 <TableCell className="font-medium">{product.name}</TableCell>
                 <TableCell>{product.category}</TableCell>
                 <TableCell>${product.price.toFixed(2)}</TableCell>
                 <TableCell>{product.quantity}</TableCell>
+                <TableCell><span className="text-green-600 font-medium">{available}</span></TableCell>
+                <TableCell><span className="text-yellow-600 font-medium">{inUse}</span></TableCell>
                 <TableCell>{new Date(product.purchaseDate).toLocaleDateString('pl-PL')}</TableCell>
-                <TableCell>
-                  <Select
-                    value={product.status}
-                    onValueChange={(value: ProductStatus) => onStatusChange(product.id, value)}
-                  >
-                    <SelectTrigger className="w-[140px]">
-                      <Badge className={`${getStatusClass(product.status)} border-0`}>
-                        {STATUS_LABELS[product.status]}
-                      </Badge>
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                        <SelectItem key={value} value={value}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
                     <Button
@@ -97,7 +70,7 @@ export function ProductTable({ products, onEdit, onDelete, onStatusChange }: Pro
                   </div>
                 </TableCell>
               </TableRow>
-            ))}
+              )})}
           </TableBody>
         </Table>
       </div>

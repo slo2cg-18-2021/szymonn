@@ -93,7 +93,7 @@ function App() {
         product.barcode.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.category.toLowerCase().includes(searchQuery.toLowerCase())
       
-      const matchesStatus = statusFilter === 'all' || product.status === statusFilter
+      const matchesStatus = statusFilter === 'all' || product.statuses.some(s => s === statusFilter)
       const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter
 
       return matchesSearch && matchesStatus && matchesCategory
@@ -119,7 +119,8 @@ function App() {
     if (editingProduct) {
       const updatedProduct = { 
         ...productData, 
-        id: editingProduct.id, 
+        id: editingProduct.id,
+        statuses: editingProduct.statuses,
         updatedAt: new Date().toISOString() 
       }
       setProducts((currentProducts) =>
@@ -130,9 +131,11 @@ function App() {
       queueUpdateProduct(updatedProduct)
       toast.success('Produkt zaktualizowany', { duration: 2000 })
     } else {
+      const quantity = productData.quantity
       const newProduct: Product = {
         ...productData,
         id: Date.now().toString(),
+        statuses: Array(quantity).fill('available'),
         updatedAt: new Date().toISOString()
       }
       setProducts((currentProducts) => [...(currentProducts || []), newProduct])
@@ -160,9 +163,16 @@ function App() {
     const updatedProduct = (products || []).find(p => p.id === id)
     if (!updatedProduct) return
     
+    // Zmień pierwszy dostępny status na dany status
+    const newStatuses = [...updatedProduct.statuses]
+    const availableIndex = newStatuses.findIndex(s => s !== status)
+    if (availableIndex !== -1) {
+      newStatuses[availableIndex] = status
+    }
+    
     const newProduct = {
       ...updatedProduct,
-      status,
+      statuses: newStatuses,
       updatedAt: new Date().toISOString()
     }
     
@@ -380,7 +390,6 @@ function App() {
                         product={product}
                         onEdit={handleEditProduct}
                         onDelete={handleDeleteProduct}
-                        onStatusChange={handleStatusChange}
                       />
                     ))
                   )}
@@ -390,7 +399,6 @@ function App() {
                   products={filteredProducts}
                   onEdit={handleEditProduct}
                   onDelete={handleDeleteProduct}
-                  onStatusChange={handleStatusChange}
                 />
               )}
             </div>
