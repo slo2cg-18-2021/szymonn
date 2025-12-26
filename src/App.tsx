@@ -110,9 +110,6 @@ function App() {
     if (existingProduct) {
       setEditingProduct(existingProduct)
       setDialogOpen(true)
-      toast.info('Produkt już istnieje - edytuj', {
-        duration: 2000
-      })
     } else {
       setScannedBarcode(barcode)
       setDialogOpen(true)
@@ -256,6 +253,8 @@ function App() {
       setDialogOpen(false)
       setScannedBarcode('')
       setEditingProduct(undefined)
+    } else {
+      setDialogOpen(true)
     }
   }
 
