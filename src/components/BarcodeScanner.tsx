@@ -44,11 +44,26 @@ export function BarcodeScanner({ onScan, disabled }: BarcodeScannerProps) {
   }
 
   const startCamera = async () => {
-    if (!scannerDivRef.current) return
-
     setCameraError('')
+    setIsCameraActive(true)
+    
+    await new Promise(resolve => setTimeout(resolve, 100))
     
     try {
+      const readerElement = document.getElementById('barcode-reader')
+      if (!readerElement) {
+        throw new Error('Element skanera nie istnieje')
+      }
+
+      if (scannerRef.current) {
+        try {
+          await scannerRef.current.stop()
+          scannerRef.current.clear()
+        } catch (e) {
+          console.log('Czyszczenie starego skanera')
+        }
+      }
+
       const scanner = new Html5Qrcode('barcode-reader')
       scannerRef.current = scanner
 
@@ -71,11 +86,20 @@ export function BarcodeScanner({ onScan, disabled }: BarcodeScannerProps) {
         undefined
       )
 
-      setIsCameraActive(true)
-    } catch (err) {
+    } catch (err: any) {
       console.error('Camera error:', err)
-      setCameraError('Nie można uruchomić kamery. Sprawdź uprawnienia.')
+      const errorMessage = err?.message || ''
+      
+      if (errorMessage.includes('Permission') || errorMessage.includes('NotAllowedError')) {
+        setCameraError('Brak dostępu do kamery. Zezwól na dostęp w ustawieniach przeglądarki.')
+      } else if (errorMessage.includes('NotFoundError') || errorMessage.includes('NotReadableError')) {
+        setCameraError('Nie znaleziono kamery lub jest używana przez inną aplikację.')
+      } else {
+        setCameraError('Nie można uruchomić kamery. Sprawdź uprawnienia i spróbuj ponownie.')
+      }
+      
       setIsCameraActive(false)
+      scannerRef.current = null
     }
   }
 
@@ -151,13 +175,18 @@ export function BarcodeScanner({ onScan, disabled }: BarcodeScannerProps) {
         </AnimatePresence>
 
         {cameraError && (
-          <motion.p
+          <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-sm text-destructive"
+            className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg"
           >
-            {cameraError}
-          </motion.p>
+            <p className="text-sm text-destructive font-medium mb-1">
+              Problem z kamerą
+            </p>
+            <p className="text-xs text-destructive/80">
+              {cameraError}
+            </p>
+          </motion.div>
         )}
 
         <div className="relative">
