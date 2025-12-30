@@ -46,13 +46,32 @@ function App() {
     checkAuth()
   }, [])
 
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-secondary/20">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border border-primary border-t-transparent mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Ładowanie...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return <Login onLogin={() => { setIsAuthenticated(true); setAuthChecked(true); }} />
+  }
+
+  return <AuthenticatedApp onLogout={() => setIsAuthenticated(false)} />
+}
+
+function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
   const handleLogout = async () => {
     try {
       await fetch(`/api/logout`, { method: 'POST', credentials: 'include' })
     } catch (err) {
       console.error('Logout error', err)
     }
-    setIsAuthenticated(false)
+    onLogout()
   }
   const [products, setProducts] = useKV<Product[]>('salon-products', [])
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -92,7 +111,7 @@ function App() {
     loadProductsFromServer()
   }, [setProducts])
 
-  // useEffect for online status notifications - MUST be before conditional returns
+  // useEffect for online status notifications
   useEffect(() => {
     let wasOnline = navigator.onLine
 
@@ -120,21 +139,6 @@ function App() {
       window.removeEventListener('offline', handleOnlineStatus)
     }
   }, [])
-
-  if (!authChecked) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-secondary/20">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border border-primary border-t-transparent mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Ładowanie...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!isAuthenticated) {
-    return <Login onLogin={() => { setIsAuthenticated(true); setAuthChecked(true); }} />
-  }
 
   const filteredProducts = useMemo(() => {
     return (products || []).filter(product => {
