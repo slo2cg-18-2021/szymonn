@@ -12,6 +12,8 @@ import { ProductEditDialog } from '@/components/ProductEditDialog'
 import { OfflineStatusBanner } from '@/components/OfflineStatusBanner'
 import { ConnectionIndicator } from '@/components/ConnectionIndicator'
 import { SyncSettingsDialog } from '@/components/SyncSettingsDialog'
+import { LowStockAlert } from '@/components/LowStockAlert'
+import { SalesReportDialog } from '@/components/SalesReportDialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -339,6 +341,8 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
 
         <OfflineStatusBanner />
 
+        <LowStockAlert products={products || []} threshold={2} />
+
         <motion.div 
           className="mb-4 sm:mb-6"
           initial={{ opacity: 0, y: 20 }}
@@ -401,6 +405,8 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
                 </div>
                 
                 <SyncSettingsDialog />
+                
+                <SalesReportDialog products={products || []} />
                 
                 <input
                   id="csv-upload"
