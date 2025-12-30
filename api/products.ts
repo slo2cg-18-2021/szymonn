@@ -1,4 +1,3 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { Client } from 'pg'
 
 // Read connection string from env var. Set this in Vercel as DATABASE_URL.
@@ -15,7 +14,7 @@ async function withClient<T>(fn: (client: Client) => Promise<T>) {
   }
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   // CORS
   res.setHeader('Access-Control-Allow-Credentials', 'true')
   res.setHeader('Access-Control-Allow-Origin', '*')

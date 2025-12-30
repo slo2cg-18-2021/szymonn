@@ -1,4 +1,3 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
 import jwt from 'jsonwebtoken'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret'
@@ -14,7 +13,7 @@ function parseCookies(cookieHeader: string | undefined) {
   return obj
 }
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
+export default function handler(req: any, res: any) {
   const cookies = parseCookies(req.headers.cookie)
   const token = cookies['token']
   if (!token) {

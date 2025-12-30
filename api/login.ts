@@ -1,4 +1,3 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { Client } from 'pg'
 import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
@@ -17,7 +16,7 @@ async function withClient<T>(fn: (client: Client) => Promise<T>) {
   }
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' })
     return
