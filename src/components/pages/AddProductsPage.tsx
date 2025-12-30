@@ -54,14 +54,19 @@ export function AddProductsPage({
           const statuses = p.statuses && p.statuses.length > 0 
             ? p.statuses 
             : Array(quantity).fill('available')
+          const priceGross = p.price || 0
           return {
             id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
             barcode: p.barcode!,
             name: p.name!,
+            brand: p.brand || 'Nieznana',
             mainCategory: p.mainCategory || 'resale',
             category: p.category!,
-            price: p.price!,
-            salePrice: p.salePrice || (p.price! * 1.8),
+            priceNet: priceGross / 1.23,
+            priceGross: priceGross,
+            vatRate: 23 as const,
+            price: priceGross,
+            salePrice: p.salePrice || (priceGross * 1.8),
             quantity: quantity,
             purchaseDate: p.purchaseDate!,
             statuses: statuses,

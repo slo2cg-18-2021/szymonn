@@ -9,6 +9,7 @@ import { ReportsPage } from '@/components/pages/ReportsPage'
 import { SettingsPage } from '@/components/pages/SettingsPage'
 import { InventoryManagement } from '@/components/InventoryManagement'
 import { ProductEditDialog } from '@/components/ProductEditDialog'
+import { DeliveryDialog } from '@/components/DeliveryDialog'
 import { OfflineStatusBanner } from '@/components/OfflineStatusBanner'
 import { StatsCards } from '@/components/StatsCards'
 import { toast, Toaster } from 'sonner'
@@ -69,6 +70,8 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
   const [products, setProducts] = useKV<Product[]>('salon-products', [])
   const [currentPage, setCurrentPage] = useState<PageType>('add')
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false)
+  const [deliveryProduct, setDeliveryProduct] = useState<Product | undefined>()
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | undefined>()
   const [scannedBarcode, setScannedBarcode] = useState('')
@@ -125,20 +128,49 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
 
   const handleScan = (barcode: string) => {
     // Prevent multiple scans opening multiple dialogs
-    if (scanLock || dialogOpen) return
+    if (scanLock || dialogOpen || deliveryDialogOpen) return
     
     setScanLock(true)
     const existingProduct = (products || []).find(p => p.barcode === barcode)
+    
     if (existingProduct) {
-      setEditingProduct(existingProduct)
-      setDialogOpen(true)
+      // Produkt już istnieje - otwórz dialog dostawy
+      setDeliveryProduct(existingProduct)
+      setDeliveryDialogOpen(true)
+      toast.info('Produkt już w bazie', {
+        description: 'Możesz dodać nową dostawę'
+      })
     } else {
+      // Nowy produkt - otwórz formularz dodawania
       setScannedBarcode(barcode)
       setDialogOpen(true)
     }
     
     // Release lock after a short delay
     setTimeout(() => setScanLock(false), 1000)
+  }
+
+  const handleAddDelivery = (product: Product, additionalQuantity: number) => {
+    const newStatuses = [...product.statuses, ...Array(additionalQuantity).fill('available')]
+    const newDiscounts = [...(product.discounts || []), ...Array(additionalQuantity).fill(0)]
+    
+    const updatedProduct: Product = {
+      ...product,
+      quantity: product.quantity + additionalQuantity,
+      statuses: newStatuses,
+      discounts: newDiscounts,
+      updatedAt: new Date().toISOString()
+    }
+    
+    setProducts((current) =>
+      (current || []).map(p => p.id === product.id ? updatedProduct : p)
+    )
+    queueUpdateProduct(updatedProduct)
+    toast.success(`Dodano ${additionalQuantity} szt. do stanu`, {
+      description: `Nowy stan: ${updatedProduct.quantity} szt.`
+    })
+    setDeliveryDialogOpen(false)
+    setDeliveryProduct(undefined)
   }
 
   const handleSaveProduct = (productData: Omit<Product, 'id' | 'updatedAt'>) => {
@@ -314,6 +346,23 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
       >
         {renderPage()}
       </AdminLayout>
+      
+      {/* Dialog dostawy - wyświetlany gdy skanujemy istniejący produkt */}
+      {deliveryProduct && (
+        <DeliveryDialog
+          open={deliveryDialogOpen}
+          onOpenChange={(open) => {
+            setDeliveryDialogOpen(open)
+            if (!open) {
+              setDeliveryProduct(undefined)
+              setScanLock(true)
+              setTimeout(() => setScanLock(false), 500)
+            }
+          }}
+          product={deliveryProduct}
+          onAddQuantity={handleAddDelivery}
+        />
+      )}
     </>
   )
 }
