@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
 import { Product, ProductStatus } from '@/lib/types'
 import { BarcodeScanner } from '@/components/BarcodeScanner'
+import Login from '@/components/Login'
 import { ProductFormDialog } from '@/components/ProductFormDialog'
 import { ProductTable } from '@/components/ProductTable'
 import { ProductCard } from '@/components/ProductCard'
@@ -24,6 +25,35 @@ import { PRODUCT_CATEGORIES } from '@/lib/types'
 import { motion } from 'framer-motion'
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
+  const [authChecked, setAuthChecked] = useState<boolean>(false)
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch(`/api/check_session`, { credentials: 'include' })
+        if (res.ok) {
+          setIsAuthenticated(true)
+        } else {
+          setIsAuthenticated(false)
+        }
+      } catch (err) {
+        setIsAuthenticated(false)
+      } finally {
+        setAuthChecked(true)
+      }
+    }
+    checkAuth()
+  }, [])
+
+  const handleLogout = async () => {
+    try {
+      await fetch(`/api/logout`, { method: 'POST', credentials: 'include' })
+    } catch (err) {
+      console.error('Logout error', err)
+    }
+    setIsAuthenticated(false)
+  }
   const [products, setProducts] = useKV<Product[]>('salon-products', [])
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -61,6 +91,14 @@ function App() {
 
     loadProductsFromServer()
   }, [setProducts])
+
+  if (!authChecked) {
+    return null // or a spinner while checking auth
+  }
+
+  if (!isAuthenticated) {
+    return <Login onLogin={() => { setIsAuthenticated(true); setAuthChecked(true); }} />
+  }
 
   useEffect(() => {
     let wasOnline = navigator.onLine
@@ -270,7 +308,10 @@ function App() {
             <h1 className="text-2xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Magazyn Salonu
             </h1>
-            <ConnectionIndicator />
+            <div className="flex items-center gap-3">
+              <ConnectionIndicator />
+              <Button variant="outline" onClick={handleLogout} className="h-9">Wyloguj</Button>
+            </div>
           </div>
           <p className="text-muted-foreground text-sm sm:text-lg">
             Zarządzaj produktami przez skanowanie kodów
