@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Product, ProductStatus, STATUS_LABELS, calculateSalePrice, calculateDiscountedPrice, MAIN_CATEGORY_LABELS } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { MagnifyingGlass } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
@@ -20,6 +21,8 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
   const [discountDialogOpen, setDiscountDialogOpen] = useState(false)
   const [discountIndex, setDiscountIndex] = useState<number | null>(null)
   const [discountValue, setDiscountValue] = useState('')
+  const [finalPriceValue, setFinalPriceValue] = useState('')
+  const [discountMode, setDiscountMode] = useState<'percent' | 'price'>('percent')
 
   const filteredProducts = useMemo(() => {
     return products.filter(product =>
@@ -61,7 +64,21 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
   const handleDiscountConfirm = () => {
     if (!selectedProduct || discountIndex === null) return
 
-    const discount = parseFloat(discountValue) || 0
+    const salePrice = selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.price))
+    let discount: number
+    let finalPrice: number
+
+    if (discountMode === 'percent') {
+      discount = parseFloat(discountValue) || 0
+      finalPrice = calculateDiscountedPrice(salePrice, discount)
+    } else {
+      // Oblicz rabat na podstawie ceny końcowej
+      finalPrice = parseFloat(finalPriceValue) || salePrice
+      discount = ((salePrice - finalPrice) / salePrice) * 100
+      if (discount < 0) discount = 0
+      if (discount > 100) discount = 100
+    }
+
     const newDiscounts = [...(selectedProduct.discounts || Array(selectedProduct.quantity).fill(0))]
     newDiscounts[discountIndex] = discount
 
@@ -75,10 +92,10 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
     onUpdateProduct(newProduct)
     setDiscountDialogOpen(false)
     setDiscountIndex(null)
+    setDiscountValue('')
+    setFinalPriceValue('')
     
-    const salePrice = selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.price))
-    const finalPrice = calculateDiscountedPrice(salePrice, discount)
-    toast.success(`Sprzedano z rabatem ${discount}% za ${finalPrice.toFixed(2)} zł`, { duration: 2000 })
+    toast.success(`Sprzedano z rabatem ${discount.toFixed(1)}% za ${finalPrice.toFixed(2)} zł`, { duration: 2000 })
   }
 
   const getStatusColor = (status: ProductStatus) => {
@@ -92,46 +109,115 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
     }
   }
 
+  // Oblicz cenę końcową na podstawie rabatu procentowego
+  const calculatedFinalPrice = useMemo(() => {
+    if (!selectedProduct || !discountValue) return null
+    const salePrice = selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.price))
+    return calculateDiscountedPrice(salePrice, parseFloat(discountValue) || 0)
+  }, [selectedProduct, discountValue])
+
+  // Oblicz rabat na podstawie ceny końcowej
+  const calculatedDiscount = useMemo(() => {
+    if (!selectedProduct || !finalPriceValue) return null
+    const salePrice = selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.price))
+    const finalPrice = parseFloat(finalPriceValue) || 0
+    const discount = ((salePrice - finalPrice) / salePrice) * 100
+    return Math.max(0, Math.min(100, discount))
+  }, [selectedProduct, finalPriceValue])
+
   return (
     <div className="space-y-6">
-      <Dialog open={discountDialogOpen} onOpenChange={setDiscountDialogOpen}>
-        <DialogContent className="max-w-sm">
+      <Dialog open={discountDialogOpen} onOpenChange={(open) => {
+        setDiscountDialogOpen(open)
+        if (!open) {
+          setDiscountValue('')
+          setFinalPriceValue('')
+          setDiscountMode('percent')
+        }
+      }}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Sprzedaż z rabatem</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
             {selectedProduct && (
-              <div className="text-sm space-y-2">
-                <p>Cena bazowa: <span className="font-medium">{Number(selectedProduct.price).toFixed(2)} zł</span></p>
-                <p>Cena sprzedaży (marża 80%): <span className="font-medium">{(selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.price))).toFixed(2)} zł</span></p>
+              <div className="text-sm space-y-2 p-3 bg-muted/50 rounded-lg">
+                <p>Cena zakupu: <span className="font-medium">{Number(selectedProduct.price).toFixed(2)} zł</span></p>
+                <p>Cena sprzedaży (marża 80%): <span className="font-bold text-green-600">{(selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.price))).toFixed(2)} zł</span></p>
               </div>
             )}
-            <div className="grid gap-2">
-              <Label htmlFor="discount">Rabat (%)</Label>
-              <Input
-                id="discount"
-                type="number"
-                min="0"
-                max="100"
-                value={discountValue}
-                onChange={(e) => setDiscountValue(e.target.value)}
-                placeholder="np. 10"
-              />
-            </div>
-            {discountValue && selectedProduct && (
-              <div className="p-3 bg-muted rounded-lg">
-                <p className="text-sm">Cena po rabacie: <span className="font-bold text-green-600">
-                  {calculateDiscountedPrice(
-                    selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.price)),
-                    parseFloat(discountValue) || 0
-                  ).toFixed(2)} zł
-                </span></p>
+            
+            <Tabs value={discountMode} onValueChange={(v) => {
+              setDiscountMode(v as 'percent' | 'price')
+              setDiscountValue('')
+              setFinalPriceValue('')
+            }}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="percent">Podaj rabat %</TabsTrigger>
+                <TabsTrigger value="price">Podaj cenę</TabsTrigger>
+              </TabsList>
+            </Tabs>
+
+            {discountMode === 'percent' ? (
+              <div className="grid gap-2">
+                <Label htmlFor="discount">Rabat (%)</Label>
+                <Input
+                  id="discount"
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={discountValue}
+                  onChange={(e) => setDiscountValue(e.target.value)}
+                  placeholder="np. 10"
+                />
+                {calculatedFinalPrice !== null && (
+                  <p className="text-sm text-muted-foreground">
+                    Cena końcowa: <span className="font-bold text-green-600">{calculatedFinalPrice.toFixed(2)} zł</span>
+                  </p>
+                )}
+              </div>
+            ) : (
+              <div className="grid gap-2">
+                <Label htmlFor="finalPrice">Cena końcowa (zł)</Label>
+                <Input
+                  id="finalPrice"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={finalPriceValue}
+                  onChange={(e) => setFinalPriceValue(e.target.value)}
+                  placeholder={selectedProduct ? (selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.price))).toFixed(2) : '0.00'}
+                />
+                {calculatedDiscount !== null && (
+                  <p className="text-sm text-muted-foreground">
+                    Rabat: <span className="font-bold text-purple-600">{calculatedDiscount.toFixed(1)}%</span>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {((discountMode === 'percent' && discountValue) || (discountMode === 'price' && finalPriceValue)) && selectedProduct && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <p className="text-sm font-medium text-green-800">
+                  Podsumowanie sprzedaży:
+                </p>
+                <p className="text-lg font-bold text-green-700 mt-1">
+                  {discountMode === 'percent' 
+                    ? `${calculatedFinalPrice?.toFixed(2)} zł (rabat ${discountValue}%)`
+                    : `${finalPriceValue} zł (rabat ${calculatedDiscount?.toFixed(1)}%)`
+                  }
+                </p>
               </div>
             )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDiscountDialogOpen(false)}>Anuluj</Button>
-            <Button onClick={handleDiscountConfirm}>Potwierdź sprzedaż</Button>
+            <Button 
+              onClick={handleDiscountConfirm}
+              disabled={discountMode === 'percent' ? !discountValue : !finalPriceValue}
+            >
+              Potwierdź sprzedaż
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

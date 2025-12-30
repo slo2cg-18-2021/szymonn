@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Product } from '@/lib/types'
+import { Product, calculateSalePrice, calculateDiscountedPrice } from '@/lib/types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -71,16 +71,25 @@ export function SalesReportDialog({ products }: SalesReportDialogProps) {
         }
       }
       
-      // Sprzedaż - na podstawie updatedAt dla statusów 'sold'
-      const soldCount = (product.statuses || []).filter(s => s === 'sold').length
-      if (soldCount > 0 && product.updatedAt) {
-        const updateDate = new Date(product.updatedAt)
-        if (updateDate.getFullYear().toString() === selectedYear) {
-          const monthIndex = updateDate.getMonth()
-          months[monthIndex].soldCount += soldCount
-          months[monthIndex].soldValue += Number(product.price) * soldCount
+      // Sprzedaż - na podstawie updatedAt dla statusów 'sold' i 'sold-discount'
+      const salePrice = product.salePrice || calculateSalePrice(Number(product.price))
+      
+      ;(product.statuses || []).forEach((status, index) => {
+        if ((status === 'sold' || status === 'sold-discount') && product.updatedAt) {
+          const updateDate = new Date(product.updatedAt)
+          if (updateDate.getFullYear().toString() === selectedYear) {
+            const monthIndex = updateDate.getMonth()
+            months[monthIndex].soldCount += 1
+            
+            if (status === 'sold') {
+              months[monthIndex].soldValue += salePrice
+            } else if (status === 'sold-discount') {
+              const discount = product.discounts?.[index] || 0
+              months[monthIndex].soldValue += calculateDiscountedPrice(salePrice, discount)
+            }
+          }
         }
-      }
+      })
     })
 
     return months
