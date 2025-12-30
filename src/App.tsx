@@ -93,7 +93,14 @@ function App() {
   }, [setProducts])
 
   if (!authChecked) {
-    return null // or a spinner while checking auth
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-secondary/20">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border border-primary border-t-transparent mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Ładowanie...</p>
+        </div>
+      </div>
+    )
   }
 
   if (!isAuthenticated) {
