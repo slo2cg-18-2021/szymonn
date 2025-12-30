@@ -14,11 +14,14 @@ CREATE TABLE IF NOT EXISTS products (
   id TEXT PRIMARY KEY,
   barcode TEXT,
   name TEXT,
+  mainCategory TEXT DEFAULT 'resale',
   category TEXT,
   price NUMERIC(10,2),
+  salePrice NUMERIC(10,2),
   quantity INTEGER DEFAULT 1,
   purchaseDate TEXT,
   statuses JSONB,
+  discounts JSONB,
   notes TEXT,
   updatedAt TEXT
 );

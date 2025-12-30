@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Product, PRODUCT_CATEGORIES } from '@/lib/types'
+import { Product, PRODUCT_CATEGORIES, MAIN_CATEGORY_LABELS, MainCategory, calculateSalePrice } from '@/lib/types'
 import { Separator } from '@/components/ui/separator'
 
 interface ProductFormDialogProps {
@@ -26,6 +26,7 @@ export function ProductFormDialog({
   const [formData, setFormData] = useState({
     barcode: initialBarcode,
     name: '',
+    mainCategory: 'resale' as MainCategory,
     category: 'Szampon',
     price: '',
     quantity: '1',
@@ -40,6 +41,7 @@ export function ProductFormDialog({
         setFormData({
           barcode: existingProduct.barcode,
           name: existingProduct.name,
+          mainCategory: existingProduct.mainCategory || 'resale',
           category: existingProduct.category,
           price: existingProduct.price.toString(),
           quantity: existingProduct.quantity.toString(),
@@ -50,6 +52,7 @@ export function ProductFormDialog({
         setFormData({
           barcode: initialBarcode,
           name: '',
+          mainCategory: 'resale',
           category: 'Szampon',
           price: '',
           quantity: '1',
@@ -64,14 +67,19 @@ export function ProductFormDialog({
     e.preventDefault()
     if (!formData.barcode || !formData.name || !formData.price) return
 
+    const basePrice = parseFloat(formData.price)
+    
     onSave({
       barcode: formData.barcode,
       name: formData.name,
+      mainCategory: formData.mainCategory,
       category: formData.category,
-      price: parseFloat(formData.price),
+      price: basePrice,
+      salePrice: calculateSalePrice(basePrice),
       quantity: parseInt(formData.quantity) || 1,
       purchaseDate: formData.purchaseDate,
       statuses: [], // Will be populated by the parent component
+      discounts: [],
       notes: formData.notes
     })
   }
@@ -109,6 +117,25 @@ export function ProductFormDialog({
                 required
                 className="h-11"
               />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="mainCategory">Typ Produktu *</Label>
+              <Select
+                value={formData.mainCategory}
+                onValueChange={(value: MainCategory) => setFormData({ ...formData, mainCategory: value })}
+              >
+                <SelectTrigger id="mainCategory" className="h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.entries(MAIN_CATEGORY_LABELS) as [MainCategory, string][]).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

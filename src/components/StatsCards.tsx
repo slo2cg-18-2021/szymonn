@@ -1,6 +1,6 @@
-import { Product } from '@/lib/types'
+import { Product, calculateSalePrice, calculateDiscountedPrice } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { CheckCircle, Clock, ShoppingCart, Package } from '@phosphor-icons/react'
+import { CheckCircle, Clock, ShoppingCart, Package, Recycle } from '@phosphor-icons/react'
 
 interface StatsCardsProps {
   products: Product[]
@@ -10,17 +10,33 @@ export function StatsCards({ products }: StatsCardsProps) {
   const totalProducts = products.length
   const availableCount = products.reduce((sum, p) => sum + (p.statuses || []).filter(s => s === 'available').length, 0)
   const inUseCount = products.reduce((sum, p) => sum + (p.statuses || []).filter(s => s === 'in-use').length, 0)
-  const soldCount = products.reduce((sum, p) => sum + (p.statuses || []).filter(s => s === 'sold').length, 0)
+  const usedCount = products.reduce((sum, p) => sum + (p.statuses || []).filter(s => s === 'used').length, 0)
+  const soldCount = products.reduce((sum, p) => sum + (p.statuses || []).filter(s => s === 'sold' || s === 'sold-discount').length, 0)
   
+  // Wartość magazynu (dostępne + w użyciu) w cenach zakupu
   const totalValue = products
-    .reduce((sum, p) => sum + (Number(p.price) * (p.statuses || []).filter(s => s !== 'sold').length), 0)
+    .reduce((sum, p) => sum + (Number(p.price) * (p.statuses || []).filter(s => s === 'available' || s === 'in-use').length), 0)
   
-  const soldValue = products
-    .reduce((sum, p) => sum + (Number(p.price) * (p.statuses || []).filter(s => s === 'sold').length), 0)
+  // Wartość sprzedaży (z marżą 80%, uwzględniając rabaty)
+  const soldValue = products.reduce((sum, p) => {
+    const salePrice = p.salePrice || calculateSalePrice(Number(p.price))
+    let productSoldValue = 0
+    
+    ;(p.statuses || []).forEach((status, index) => {
+      if (status === 'sold') {
+        productSoldValue += salePrice
+      } else if (status === 'sold-discount') {
+        const discount = p.discounts?.[index] || 0
+        productSoldValue += calculateDiscountedPrice(salePrice, discount)
+      }
+    })
+    
+    return sum + productSoldValue
+  }, 0)
 
   const stats = [
     {
-      title: 'Wszystkie',
+      title: 'Produkty',
       value: totalProducts,
       icon: Package,
       color: 'text-primary'
@@ -29,24 +45,30 @@ export function StatsCards({ products }: StatsCardsProps) {
       title: 'Dostępne',
       value: availableCount,
       icon: CheckCircle,
-      color: 'text-[var(--status-available)]'
+      color: 'text-green-600'
     },
     {
       title: 'W Użyciu',
       value: inUseCount,
       icon: Clock,
-      color: 'text-[var(--status-in-use)]'
+      color: 'text-yellow-600'
+    },
+    {
+      title: 'Zużyte',
+      value: usedCount,
+      icon: Recycle,
+      color: 'text-gray-600'
     },
     {
       title: 'Sprzedane',
       value: soldCount,
       icon: ShoppingCart,
-      color: 'text-[var(--status-sold)]'
+      color: 'text-blue-600'
     }
   ]
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 sm:gap-4">
       {stats.map((stat) => (
         <Card key={stat.title}>
           <CardHeader className="pb-2">
@@ -61,27 +83,27 @@ export function StatsCards({ products }: StatsCardsProps) {
         </Card>
       ))}
       
-      <Card className="col-span-2 md:col-span-2 lg:col-span-1">
+      <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
             Wartość Magazynu
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl sm:text-3xl font-bold">${totalValue.toFixed(2)}</div>
-          <p className="text-xs text-muted-foreground mt-1">Bez sprzedanych</p>
+          <div className="text-xl sm:text-2xl font-bold">{totalValue.toFixed(2)} zł</div>
+          <p className="text-xs text-muted-foreground mt-1">Ceny zakupu</p>
         </CardContent>
       </Card>
       
-      <Card className="col-span-2 md:col-span-2 lg:col-span-1">
+      <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
-            Wartość Sprzedanych
+            Przychód ze sprzedaży
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-2xl sm:text-3xl font-bold">${soldValue.toFixed(2)}</div>
-          <p className="text-xs text-muted-foreground mt-1">{soldCount} szt.</p>
+          <div className="text-xl sm:text-2xl font-bold text-green-600">{soldValue.toFixed(2)} zł</div>
+          <p className="text-xs text-muted-foreground mt-1">{soldCount} szt. (marża 80%)</p>
         </CardContent>
       </Card>
     </div>

@@ -1,9 +1,11 @@
 import { useState, useMemo } from 'react'
-import { Product, ProductStatus, STATUS_LABELS } from '@/lib/types'
+import { Product, ProductStatus, STATUS_LABELS, calculateSalePrice, calculateDiscountedPrice, MAIN_CATEGORY_LABELS } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { MagnifyingGlass } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
@@ -15,6 +17,9 @@ interface InventoryManagementProps {
 export function InventoryManagement({ products, onUpdateProduct }: InventoryManagementProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null)
+  const [discountDialogOpen, setDiscountDialogOpen] = useState(false)
+  const [discountIndex, setDiscountIndex] = useState<number | null>(null)
+  const [discountValue, setDiscountValue] = useState('')
 
   const filteredProducts = useMemo(() => {
     return products.filter(product =>
@@ -28,9 +33,24 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
   const handleStatusChange = (index: number, status: ProductStatus) => {
     if (!selectedProduct) return
 
+    // Jeśli wybrano "sprzedany z rabatem", otwórz dialog
+    if (status === 'sold-discount') {
+      setDiscountIndex(index)
+      setDiscountValue('')
+      setDiscountDialogOpen(true)
+      return
+    }
+
+    const newDiscounts = [...(selectedProduct.discounts || [])]
+    // Jeśli zmienia się z sold-discount na coś innego, usuń rabat
+    if (selectedProduct.statuses[index] === 'sold-discount') {
+      newDiscounts[index] = 0
+    }
+
     const newProduct = {
       ...selectedProduct,
       statuses: selectedProduct.statuses.map((s, i) => i === index ? status : s),
+      discounts: newDiscounts,
       updatedAt: new Date().toISOString()
     }
 
@@ -38,8 +58,84 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
     toast.success('Status zmieniony', { duration: 1500 })
   }
 
+  const handleDiscountConfirm = () => {
+    if (!selectedProduct || discountIndex === null) return
+
+    const discount = parseFloat(discountValue) || 0
+    const newDiscounts = [...(selectedProduct.discounts || Array(selectedProduct.quantity).fill(0))]
+    newDiscounts[discountIndex] = discount
+
+    const newProduct = {
+      ...selectedProduct,
+      statuses: selectedProduct.statuses.map((s, i) => i === discountIndex ? 'sold-discount' as ProductStatus : s),
+      discounts: newDiscounts,
+      updatedAt: new Date().toISOString()
+    }
+
+    onUpdateProduct(newProduct)
+    setDiscountDialogOpen(false)
+    setDiscountIndex(null)
+    
+    const salePrice = selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.price))
+    const finalPrice = calculateDiscountedPrice(salePrice, discount)
+    toast.success(`Sprzedano z rabatem ${discount}% za ${finalPrice.toFixed(2)} zł`, { duration: 2000 })
+  }
+
+  const getStatusColor = (status: ProductStatus) => {
+    switch (status) {
+      case 'available': return 'text-green-600'
+      case 'in-use': return 'text-yellow-600'
+      case 'used': return 'text-gray-600'
+      case 'sold': return 'text-blue-600'
+      case 'sold-discount': return 'text-purple-600'
+      default: return ''
+    }
+  }
+
   return (
     <div className="space-y-6">
+      <Dialog open={discountDialogOpen} onOpenChange={setDiscountDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Sprzedaż z rabatem</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {selectedProduct && (
+              <div className="text-sm space-y-2">
+                <p>Cena bazowa: <span className="font-medium">{Number(selectedProduct.price).toFixed(2)} zł</span></p>
+                <p>Cena sprzedaży (marża 80%): <span className="font-medium">{(selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.price))).toFixed(2)} zł</span></p>
+              </div>
+            )}
+            <div className="grid gap-2">
+              <Label htmlFor="discount">Rabat (%)</Label>
+              <Input
+                id="discount"
+                type="number"
+                min="0"
+                max="100"
+                value={discountValue}
+                onChange={(e) => setDiscountValue(e.target.value)}
+                placeholder="np. 10"
+              />
+            </div>
+            {discountValue && selectedProduct && (
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-sm">Cena po rabacie: <span className="font-bold text-green-600">
+                  {calculateDiscountedPrice(
+                    selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.price)),
+                    parseFloat(discountValue) || 0
+                  ).toFixed(2)} zł
+                </span></p>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDiscountDialogOpen(false)}>Anuluj</Button>
+            <Button onClick={handleDiscountConfirm}>Potwierdź sprzedaż</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
         <h2 className="text-lg sm:text-xl font-semibold mb-4">Zarządzanie Stanami Produktów</h2>
         
@@ -72,8 +168,11 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
                   >
                     <div className="font-medium">{product.name}</div>
                     <div className="text-xs text-muted-foreground">{product.barcode}</div>
-                    <div className="text-xs mt-1">
-                      Ilość: <span className="font-semibold">{product.quantity}</span>
+                    <div className="text-xs mt-1 flex justify-between">
+                      <span>Ilość: <span className="font-semibold">{product.quantity}</span></span>
+                      <span className={product.mainCategory === 'technical' ? 'text-orange-600' : 'text-blue-600'}>
+                        {product.mainCategory === 'technical' ? 'Tech.' : 'Odspr.'}
+                      </span>
                     </div>
                   </button>
                 ))
@@ -85,36 +184,59 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
             {selectedProduct ? (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">{selectedProduct.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">{selectedProduct.barcode}</p>
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <CardTitle className="text-lg">{selectedProduct.name}</CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">{selectedProduct.barcode}</p>
+                    </div>
+                    <span className={`text-xs px-2 py-1 rounded ${selectedProduct.mainCategory === 'technical' ? 'bg-orange-100 text-orange-700' : 'bg-blue-100 text-blue-700'}`}>
+                      {MAIN_CATEGORY_LABELS[selectedProduct.mainCategory || 'resale']}
+                    </span>
+                  </div>
+                  <div className="text-sm mt-2 space-y-1">
+                    <p>Cena zakupu: <span className="font-medium">{Number(selectedProduct.price).toFixed(2)} zł</span></p>
+                    <p>Cena sprzedaży (marża 80%): <span className="font-medium text-green-600">{(selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.price))).toFixed(2)} zł</span></p>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    <div className="grid grid-cols-3 gap-2 text-center p-3 bg-muted rounded-lg">
+                    <div className="grid grid-cols-5 gap-2 text-center p-3 bg-muted rounded-lg">
                       <div>
-                        <div className="text-2xl font-bold text-green-600">
-                          {selectedProduct.statuses.filter(s => s === 'available').length}
+                        <div className="text-xl font-bold text-green-600">
+                          {(selectedProduct.statuses || []).filter(s => s === 'available').length}
                         </div>
                         <p className="text-xs text-muted-foreground">Dostępne</p>
                       </div>
                       <div>
-                        <div className="text-2xl font-bold text-yellow-600">
-                          {selectedProduct.statuses.filter(s => s === 'in-use').length}
+                        <div className="text-xl font-bold text-yellow-600">
+                          {(selectedProduct.statuses || []).filter(s => s === 'in-use').length}
                         </div>
                         <p className="text-xs text-muted-foreground">W Użyciu</p>
                       </div>
                       <div>
-                        <div className="text-2xl font-bold text-red-600">
-                          {selectedProduct.statuses.filter(s => s === 'sold').length}
+                        <div className="text-xl font-bold text-gray-600">
+                          {(selectedProduct.statuses || []).filter(s => s === 'used').length}
+                        </div>
+                        <p className="text-xs text-muted-foreground">Zużyte</p>
+                      </div>
+                      <div>
+                        <div className="text-xl font-bold text-blue-600">
+                          {(selectedProduct.statuses || []).filter(s => s === 'sold').length}
                         </div>
                         <p className="text-xs text-muted-foreground">Sprzedane</p>
+                      </div>
+                      <div>
+                        <div className="text-xl font-bold text-purple-600">
+                          {(selectedProduct.statuses || []).filter(s => s === 'sold-discount').length}
+                        </div>
+                        <p className="text-xs text-muted-foreground">Z rabatem</p>
                       </div>
                     </div>
 
                     <div className="space-y-2">
                       <p className="text-sm font-medium">Poszczególne sztuki:</p>
                       <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                        {selectedProduct.statuses.map((status, index) => (
+                        {(selectedProduct.statuses || []).map((status, index) => (
                           <div key={index} className="flex items-center gap-3 p-2 bg-muted rounded">
                             <span className="text-sm font-medium w-8">#{index + 1}</span>
                             <Select value={status} onValueChange={(value: ProductStatus) => handleStatusChange(index, value)}>
@@ -123,16 +245,27 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="available">
-                                  <span className="text-green-600">Dostępne</span>
+                                  <span className="text-green-600">Dostępny</span>
                                 </SelectItem>
                                 <SelectItem value="in-use">
                                   <span className="text-yellow-600">W Użyciu</span>
                                 </SelectItem>
+                                <SelectItem value="used">
+                                  <span className="text-gray-600">Zużyty</span>
+                                </SelectItem>
                                 <SelectItem value="sold">
-                                  <span className="text-red-600">Sprzedane</span>
+                                  <span className="text-blue-600">Sprzedany</span>
+                                </SelectItem>
+                                <SelectItem value="sold-discount">
+                                  <span className="text-purple-600">Sprzedany z rabatem</span>
                                 </SelectItem>
                               </SelectContent>
                             </Select>
+                            {status === 'sold-discount' && selectedProduct.discounts?.[index] ? (
+                              <span className="text-xs text-purple-600 whitespace-nowrap">
+                                -{selectedProduct.discounts[index]}%
+                              </span>
+                            ) : null}
                           </div>
                         ))}
                       </div>

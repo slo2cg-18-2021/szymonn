@@ -189,6 +189,7 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
         ...productData,
         id: Date.now().toString(),
         statuses: Array(quantity).fill('available'),
+        discounts: Array(quantity).fill(0),
         updatedAt: new Date().toISOString()
       }
       setProducts((currentProducts) => [...(currentProducts || []), newProduct])
