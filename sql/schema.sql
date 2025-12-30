@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS `products` (
   `name` VARCHAR(255) DEFAULT NULL,
   `category` VARCHAR(100) DEFAULT NULL,
   `price` DECIMAL(10,2) DEFAULT NULL,
+  `quantity` INT DEFAULT 1,
   `purchaseDate` VARCHAR(50) DEFAULT NULL,
   `statuses` TEXT DEFAULT NULL, -- JSON encoded array
   `notes` TEXT DEFAULT NULL,

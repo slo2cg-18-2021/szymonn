@@ -1,7 +1,7 @@
-import { Product } from './types'
+import { Product, ProductStatus } from './types'
 
 export function exportToCSV(products: Product[], filename: string = 'salon-inventory.csv') {
-  const headers = ['ID', 'Barcode', 'Name', 'Category', 'Price', 'Purchase Date', 'Status', 'Notes', 'Last Updated']
+  const headers = ['ID', 'Barcode', 'Name', 'Category', 'Price', 'Quantity', 'Purchase Date', 'Statuses', 'Notes', 'Last Updated']
   
   const rows = products.map(product => [
     product.id,
@@ -9,8 +9,9 @@ export function exportToCSV(products: Product[], filename: string = 'salon-inven
     product.name,
     product.category,
     product.price.toString(),
+    product.quantity.toString(),
     product.purchaseDate,
-    product.status,
+    JSON.stringify(product.statuses),
     product.notes || '',
     product.updatedAt
   ])
@@ -44,14 +45,27 @@ export function parseCSV(csvText: string): Partial<Product>[] {
     
     if (values.length === 0) continue
 
+    const quantity = parseInt(values[headers.indexOf('Quantity')] || values[5] || '1') || 1
+    const statusesRaw = values[headers.indexOf('Statuses')] || values[7] || ''
+    let statuses: ProductStatus[] = []
+    
+    try {
+      statuses = JSON.parse(statusesRaw)
+    } catch {
+      // Fallback for old format with single status
+      const status = (values[headers.indexOf('Status')] || 'available') as ProductStatus
+      statuses = Array(quantity).fill(status)
+    }
+
     const product: Partial<Product> = {
       barcode: values[headers.indexOf('Barcode')] || values[1] || '',
       name: values[headers.indexOf('Name')] || values[2] || '',
       category: values[headers.indexOf('Category')] || values[3] || 'Other',
       price: parseFloat(values[headers.indexOf('Price')] || values[4] || '0'),
-      purchaseDate: values[headers.indexOf('Purchase Date')] || values[5] || new Date().toISOString().split('T')[0],
-      status: (values[headers.indexOf('Status')] || values[6] || 'available') as Product['status'],
-      notes: values[headers.indexOf('Notes')] || values[7] || ''
+      quantity: quantity,
+      purchaseDate: values[headers.indexOf('Purchase Date')] || values[6] || new Date().toISOString().split('T')[0],
+      statuses: statuses,
+      notes: values[headers.indexOf('Notes')] || values[8] || ''
     }
 
     if (product.barcode && product.name) {

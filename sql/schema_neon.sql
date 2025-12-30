@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS products (
   name TEXT,
   category TEXT,
   price NUMERIC(10,2),
+  quantity INTEGER DEFAULT 1,
   purchaseDate TEXT,
   statuses JSONB,
   notes TEXT,

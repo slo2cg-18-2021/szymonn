@@ -39,8 +39,9 @@ export default async function handler(req: any, res: any) {
           name: row.name,
           category: row.category,
           price: row.price,
+          quantity: row.quantity || 1,
           purchaseDate: row.purchasedate,
-          statuses: row.statuses,
+          statuses: row.statuses || [],
           notes: row.notes,
           updatedAt: row.updatedat
         }))
@@ -60,17 +61,17 @@ export default async function handler(req: any, res: any) {
           if (op.type === 'create' && op.product) {
             const p = op.product
             await client.query(
-              `INSERT INTO products(id, barcode, name, category, price, purchaseDate, statuses, notes, updatedAt)
-               VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)
+              `INSERT INTO products(id, barcode, name, category, price, quantity, purchaseDate, statuses, notes, updatedAt)
+               VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
                ON CONFLICT (id) DO NOTHING`,
-              [p.id, p.barcode, p.name, p.category, p.price, p.purchaseDate, JSON.stringify(p.statuses || []), p.notes, p.updatedAt]
+              [p.id, p.barcode, p.name, p.category, p.price, p.quantity || 1, p.purchaseDate, JSON.stringify(p.statuses || []), p.notes, p.updatedAt]
             )
             outProducts.push(p)
           } else if (op.type === 'update' && op.product) {
             const p = op.product
             await client.query(
-              `UPDATE products SET barcode=$1, name=$2, category=$3, price=$4, purchaseDate=$5, statuses=$6, notes=$7, updatedAt=$8 WHERE id=$9`,
-              [p.barcode, p.name, p.category, p.price, p.purchaseDate, JSON.stringify(p.statuses || []), p.notes, p.updatedAt, p.id]
+              `UPDATE products SET barcode=$1, name=$2, category=$3, price=$4, quantity=$5, purchaseDate=$6, statuses=$7, notes=$8, updatedAt=$9 WHERE id=$10`,
+              [p.barcode, p.name, p.category, p.price, p.quantity || 1, p.purchaseDate, JSON.stringify(p.statuses || []), p.notes, p.updatedAt, p.id]
             )
             outProducts.push(p)
           } else if (op.type === 'delete' && op.productId) {

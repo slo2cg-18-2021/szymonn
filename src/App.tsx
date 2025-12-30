@@ -92,21 +92,7 @@ function App() {
     loadProductsFromServer()
   }, [setProducts])
 
-  if (!authChecked) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-secondary/20">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border border-primary border-t-transparent mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Ładowanie...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (!isAuthenticated) {
-    return <Login onLogin={() => { setIsAuthenticated(true); setAuthChecked(true); }} />
-  }
-
+  // useEffect for online status notifications - MUST be before conditional returns
   useEffect(() => {
     let wasOnline = navigator.onLine
 
@@ -134,6 +120,21 @@ function App() {
       window.removeEventListener('offline', handleOnlineStatus)
     }
   }, [])
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-secondary/20">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border border-primary border-t-transparent mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Ładowanie...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return <Login onLogin={() => { setIsAuthenticated(true); setAuthChecked(true); }} />
+  }
 
   const filteredProducts = useMemo(() => {
     return (products || []).filter(product => {
@@ -269,17 +270,24 @@ function App() {
           return
         }
 
-        const newProducts: Product[] = importedProducts.map(p => ({
-          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
-          barcode: p.barcode!,
-          name: p.name!,
-          category: p.category!,
-          price: p.price!,
-          purchaseDate: p.purchaseDate!,
-          status: p.status!,
-          notes: p.notes,
-          updatedAt: new Date().toISOString()
-        }))
+        const newProducts: Product[] = importedProducts.map(p => {
+          const quantity = p.quantity || 1
+          const statuses = p.statuses && p.statuses.length > 0 
+            ? p.statuses 
+            : Array(quantity).fill('available')
+          return {
+            id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+            barcode: p.barcode!,
+            name: p.name!,
+            category: p.category!,
+            price: p.price!,
+            quantity: quantity,
+            purchaseDate: p.purchaseDate!,
+            statuses: statuses,
+            notes: p.notes,
+            updatedAt: new Date().toISOString()
+          }
+        })
 
         setProducts((currentProducts) => [...(currentProducts || []), ...newProducts])
         toast.success(`Zaimportowano ${newProducts.length} produktów`)

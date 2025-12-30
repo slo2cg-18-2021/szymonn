@@ -33,7 +33,7 @@ export function useOfflineSync() {
 
     try {
       // Wyślij operacje na serwer
-      const apiUrl = process.env.VITE_API_URL || window.location.origin
+      const apiUrl = import.meta.env.VITE_API_URL || window.location.origin
       const response = await fetch(`${apiUrl}/api/products`, {
         method: 'POST',
         headers: {

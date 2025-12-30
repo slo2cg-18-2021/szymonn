@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Product, ProductStatus, PRODUCT_CATEGORIES, STATUS_LABELS } from '@/lib/types'
+import { Product, PRODUCT_CATEGORIES } from '@/lib/types'
 import { Separator } from '@/components/ui/separator'
 
 interface ProductFormDialogProps {
@@ -30,7 +30,6 @@ export function ProductFormDialog({
     price: '',
     quantity: '1',
     purchaseDate: new Date().toISOString().split('T')[0],
-    status: 'available' as ProductStatus,
     notes: ''
   })
 
@@ -45,7 +44,6 @@ export function ProductFormDialog({
           price: existingProduct.price.toString(),
           quantity: existingProduct.quantity.toString(),
           purchaseDate: existingProduct.purchaseDate,
-          status: existingProduct.status,
           notes: existingProduct.notes || ''
         })
       } else {
@@ -56,7 +54,6 @@ export function ProductFormDialog({
           price: '',
           quantity: '1',
           purchaseDate: new Date().toISOString().split('T')[0],
-          status: 'available',
           notes: ''
         })
       }
@@ -74,7 +71,7 @@ export function ProductFormDialog({
       price: parseFloat(formData.price),
       quantity: parseInt(formData.quantity) || 1,
       purchaseDate: formData.purchaseDate,
-      status: formData.status,
+      statuses: [], // Will be populated by the parent component
       notes: formData.notes
     })
   }
@@ -165,36 +162,15 @@ export function ProductFormDialog({
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="purchaseDate">Data Zakupu</Label>
-                <Input
-                  id="purchaseDate"
-                  type="date"
-                  value={formData.purchaseDate}
-                  onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                  className="h-11"
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value: ProductStatus) => setFormData({ ...formData, status: value })}
-                >
-                  <SelectTrigger id="status" className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
-                        {label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="grid gap-2">
+              <Label htmlFor="purchaseDate">Data Zakupu</Label>
+              <Input
+                id="purchaseDate"
+                type="date"
+                value={formData.purchaseDate}
+                onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
+                className="h-11"
+              />
             </div>
 
             <div className="grid gap-2">
