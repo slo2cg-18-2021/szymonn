@@ -46,7 +46,7 @@ export function ProductTable({ products, onEdit, onDelete }: ProductTableProps) 
                 <TableCell className="font-mono text-sm">{product.barcode}</TableCell>
                 <TableCell className="font-medium">{product.name}</TableCell>
                 <TableCell>{product.category}</TableCell>
-                <TableCell>${product.price.toFixed(2)}</TableCell>
+                <TableCell>${Number(product.price).toFixed(2)}</TableCell>
                 <TableCell>{product.quantity}</TableCell>
                 <TableCell><span className="text-green-600 font-medium">{available}</span></TableCell>
                 <TableCell><span className="text-yellow-600 font-medium">{inUse}</span></TableCell>

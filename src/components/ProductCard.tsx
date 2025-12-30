@@ -54,7 +54,7 @@ export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Cena</p>
-            <p className="text-sm font-medium">${product.price.toFixed(2)}</p>
+            <p className="text-sm font-medium">${Number(product.price).toFixed(2)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Ilość</p>
