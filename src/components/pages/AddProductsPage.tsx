@@ -15,7 +15,8 @@ interface AddProductsPageProps {
   onSaveProduct: (product: Omit<Product, 'id' | 'updatedAt'>) => void
   onScan: (barcode: string) => void
   dialogOpen: boolean
-  setDialogOpen: (open: boolean) => void
+  onDialogClose: () => void
+  onOpenDialog: () => void
   scannedBarcode: string
   editingProduct?: Product
   onImport: (products: Product[]) => void
@@ -26,7 +27,8 @@ export function AddProductsPage({
   onSaveProduct, 
   onScan,
   dialogOpen,
-  setDialogOpen,
+  onDialogClose,
+  onOpenDialog,
   scannedBarcode,
   editingProduct,
   onImport
@@ -139,7 +141,7 @@ export function AddProductsPage({
           </CardHeader>
           <CardContent className="space-y-4">
             <Button 
-              onClick={() => setDialogOpen(true)} 
+              onClick={onOpenDialog} 
               className="w-full bg-accent hover:bg-accent/90 h-12 text-base gap-2"
             >
               <Plus className="w-5 h-5" />
@@ -207,7 +209,7 @@ export function AddProductsPage({
 
       <ProductFormDialog
         open={dialogOpen}
-        onOpenChange={setDialogOpen}
+        onOpenChange={(open) => !open && onDialogClose()}
         onSave={onSaveProduct}
         initialBarcode={scannedBarcode}
         existingProduct={editingProduct}

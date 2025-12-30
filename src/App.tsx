@@ -72,6 +72,7 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<Product | undefined>()
   const [scannedBarcode, setScannedBarcode] = useState('')
+  const [scanLock, setScanLock] = useState(false)
   const isMobile = useIsMobile()
   
   const { 
@@ -123,6 +124,10 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
   }, [])
 
   const handleScan = (barcode: string) => {
+    // Prevent multiple scans opening multiple dialogs
+    if (scanLock || dialogOpen) return
+    
+    setScanLock(true)
     const existingProduct = (products || []).find(p => p.barcode === barcode)
     if (existingProduct) {
       setEditingProduct(existingProduct)
@@ -131,6 +136,9 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
       setScannedBarcode(barcode)
       setDialogOpen(true)
     }
+    
+    // Release lock after a short delay
+    setTimeout(() => setScanLock(false), 1000)
   }
 
   const handleSaveProduct = (productData: Omit<Product, 'id' | 'updatedAt'>) => {
@@ -197,12 +205,18 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
     setProducts([])
   }
 
-  const handleDialogClose = (open: boolean) => {
-    if (!open) {
-      setDialogOpen(false)
-      setScannedBarcode('')
-      setEditingProduct(undefined)
-    } else {
+  const handleDialogClose = () => {
+    // Force close and clean up
+    setDialogOpen(false)
+    setScannedBarcode('')
+    setEditingProduct(undefined)
+    // Add small delay before allowing new scans
+    setScanLock(true)
+    setTimeout(() => setScanLock(false), 500)
+  }
+  
+  const openDialog = () => {
+    if (!scanLock) {
       setDialogOpen(true)
     }
   }
@@ -226,7 +240,8 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
               onSaveProduct={handleSaveProduct}
               onScan={handleScan}
               dialogOpen={dialogOpen}
-              setDialogOpen={handleDialogClose}
+              onDialogClose={handleDialogClose}
+              onOpenDialog={openDialog}
               scannedBarcode={scannedBarcode}
               editingProduct={editingProduct}
               onImport={handleImportProducts}
