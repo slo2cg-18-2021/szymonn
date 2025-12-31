@@ -41,12 +41,13 @@ export function ProductTable({ products, onEdit, onDelete }: ProductTableProps) 
             {products.map((product) => {
               const available = product.statuses.filter(s => s === 'available').length
               const inUse = product.statuses.filter(s => s === 'in-use').length
+              const price = Number(product.priceGross) || Number(product.price) || 0
               return (
               <TableRow key={product.id} className="hover:bg-muted/30">
                 <TableCell className="font-mono text-sm">{product.barcode}</TableCell>
                 <TableCell className="font-medium">{product.name}</TableCell>
                 <TableCell>{product.category}</TableCell>
-                <TableCell>${Number(product.price).toFixed(2)}</TableCell>
+                <TableCell>{price.toFixed(2)} zł</TableCell>
                 <TableCell>{product.quantity}</TableCell>
                 <TableCell><span className="text-green-600 font-medium">{available}</span></TableCell>
                 <TableCell><span className="text-yellow-600 font-medium">{inUse}</span></TableCell>

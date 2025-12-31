@@ -193,6 +193,7 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
       const newProduct: Product = {
         ...productData,
         id: Date.now().toString(),
+        price: productData.priceGross, // dla kompatybilności wstecznej
         statuses: Array(quantity).fill('available'),
         discounts: Array(quantity).fill(0),
         updatedAt: new Date().toISOString()

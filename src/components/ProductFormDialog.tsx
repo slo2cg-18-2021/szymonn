@@ -142,10 +142,13 @@ export function ProductFormDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.barcode || !formData.name || !formData.brand || (!formData.priceNet && !formData.priceGross)) return
-
     const priceGross = parseFloat(formData.priceGross) || 0
     const priceNet = parseFloat(formData.priceNet) || 0
+    
+    // Walidacja - cena brutto jest wymagana i musi być większa od 0
+    if (!formData.barcode || !formData.name || !formData.brand || priceGross <= 0) {
+      return
+    }
     
     onSave({
       barcode: formData.barcode,
