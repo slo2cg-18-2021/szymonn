@@ -15,6 +15,7 @@ interface AddProductsPageProps {
   onSaveProduct: (product: Omit<Product, 'id' | 'updatedAt'>) => void
   onScan: (barcode: string) => void
   dialogOpen: boolean
+  deliveryDialogOpen?: boolean
   onDialogClose: () => void
   onOpenDialog: () => void
   scannedBarcode: string
@@ -27,6 +28,7 @@ export function AddProductsPage({
   onSaveProduct, 
   onScan,
   dialogOpen,
+  deliveryDialogOpen,
   onDialogClose,
   onOpenDialog,
   scannedBarcode,
@@ -118,7 +120,10 @@ export function AddProductsPage({
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <BarcodeScanner onScan={onScan} />
+            <BarcodeScanner 
+              onScan={onScan} 
+              forceStopCamera={dialogOpen || deliveryDialogOpen}
+            />
             
             <div className="p-4 bg-muted/50 rounded-lg">
               <div className="flex items-start gap-3">

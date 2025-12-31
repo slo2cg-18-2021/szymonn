@@ -272,6 +272,7 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
               onSaveProduct={handleSaveProduct}
               onScan={handleScan}
               dialogOpen={dialogOpen}
+              deliveryDialogOpen={deliveryDialogOpen}
               onDialogClose={handleDialogClose}
               onOpenDialog={openDialog}
               scannedBarcode={scannedBarcode}

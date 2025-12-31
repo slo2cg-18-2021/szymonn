@@ -9,9 +9,10 @@ import { Html5Qrcode } from 'html5-qrcode'
 interface BarcodeScannerProps {
   onScan: (barcode: string) => void
   disabled?: boolean
+  forceStopCamera?: boolean
 }
 
-export function BarcodeScanner({ onScan, disabled }: BarcodeScannerProps) {
+export function BarcodeScanner({ onScan, disabled, forceStopCamera }: BarcodeScannerProps) {
   const [barcode, setBarcode] = useState('')
   const [isScanning, setIsScanning] = useState(false)
   const [isCameraActive, setIsCameraActive] = useState(false)
@@ -20,6 +21,14 @@ export function BarcodeScanner({ onScan, disabled }: BarcodeScannerProps) {
   const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const scannerDivRef = useRef<HTMLDivElement>(null)
+  const isStoppingRef = useRef(false)
+
+  // Force stop camera when dialog opens
+  useEffect(() => {
+    if (forceStopCamera && isCameraActive) {
+      stopCamera()
+    }
+  }, [forceStopCamera])
 
   useEffect(() => {
     return () => {
@@ -31,16 +40,21 @@ export function BarcodeScanner({ onScan, disabled }: BarcodeScannerProps) {
   }, [])
 
   const stopCamera = async () => {
-    if (scannerRef.current && isCameraActive) {
+    if (isStoppingRef.current) return
+    isStoppingRef.current = true
+    
+    if (scannerRef.current) {
       try {
         await scannerRef.current.stop()
         scannerRef.current.clear()
       } catch (err) {
         console.error('Error stopping camera:', err)
       }
+      scannerRef.current = null
     }
     setIsCameraActive(false)
     setCameraError('')
+    isStoppingRef.current = false
   }
 
   const startCamera = async () => {
@@ -79,9 +93,10 @@ export function BarcodeScanner({ onScan, disabled }: BarcodeScannerProps) {
       await scanner.start(
         { facingMode: 'environment' },
         config,
-        (decodedText) => {
+        async (decodedText) => {
+          // Stop camera first, then call onScan
+          await stopCamera()
           onScan(decodedText)
-          stopCamera()
         },
         undefined
       )
