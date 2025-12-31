@@ -14,13 +14,18 @@ export function StatsCards({ products }: StatsCardsProps) {
   const usedCount = products.reduce((sum, p) => sum + (p.statuses || []).filter(s => s === 'used').length, 0)
   const soldCount = products.reduce((sum, p) => sum + (p.statuses || []).filter(s => s === 'sold' || s === 'sold-discount').length, 0)
   
-  // Wartość magazynu (dostępne + w użyciu) w cenach zakupu
+  // Wartość magazynu (dostępne + w użyciu) w cenach zakupu brutto
   const totalValue = products
-    .reduce((sum, p) => sum + (Number(p.price) * (p.statuses || []).filter(s => s === 'available' || s === 'in-use').length), 0)
+    .reduce((sum, p) => {
+      const price = Number(p.priceGross) || Number(p.price) || 0
+      const activeCount = (p.statuses || []).filter(s => s === 'available' || s === 'in-use').length
+      return sum + (price * activeCount)
+    }, 0)
   
   // Wartość sprzedaży (z marżą 80%, uwzględniając rabaty)
   const soldValue = products.reduce((sum, p) => {
-    const salePrice = p.salePrice || calculateSalePrice(Number(p.price))
+    const basePrice = Number(p.priceGross) || Number(p.price) || 0
+    const salePrice = p.salePrice || calculateSalePrice(basePrice)
     let productSoldValue = 0
     
     ;(p.statuses || []).forEach((status, index) => {
