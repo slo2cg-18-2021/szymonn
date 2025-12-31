@@ -7,7 +7,8 @@ interface StatsCardsProps {
 }
 
 export function StatsCards({ products }: StatsCardsProps) {
-  const totalProducts = products.length
+  const uniqueProducts = products.length
+  const totalQuantity = products.reduce((sum, p) => sum + (p.quantity || 0), 0)
   const availableCount = products.reduce((sum, p) => sum + (p.statuses || []).filter(s => s === 'available').length, 0)
   const inUseCount = products.reduce((sum, p) => sum + (p.statuses || []).filter(s => s === 'in-use').length, 0)
   const usedCount = products.reduce((sum, p) => sum + (p.statuses || []).filter(s => s === 'used').length, 0)
@@ -36,8 +37,9 @@ export function StatsCards({ products }: StatsCardsProps) {
 
   const stats = [
     {
-      title: 'Produkty',
-      value: totalProducts,
+      title: 'Stan Magazynu',
+      value: totalQuantity,
+      subtitle: `${uniqueProducts} produktów`,
       icon: Package,
       color: 'text-primary'
     },
@@ -79,6 +81,9 @@ export function StatsCards({ products }: StatsCardsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl sm:text-3xl font-bold">{stat.value}</div>
+            {'subtitle' in stat && stat.subtitle && (
+              <p className="text-xs text-muted-foreground mt-1">{stat.subtitle}</p>
+            )}
           </CardContent>
         </Card>
       ))}
