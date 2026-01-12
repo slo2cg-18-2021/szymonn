@@ -4,11 +4,11 @@ import { ProductFormDialog } from '@/components/ProductFormDialog'
 import { LowStockAlert } from '@/components/LowStockAlert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Plus, Upload, Barcode, Package, Info } from '@phosphor-icons/react'
+import { Plus, Barcode, Package, Info, FileArrowDown, FileArrowUp } from '@phosphor-icons/react'
 import { toast } from 'sonner'
-import { parseCSV } from '@/lib/csv'
+import { parseCSV, downloadImportTemplate } from '@/lib/csv'
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 
 interface AddProductsPageProps {
   products: Product[]
@@ -43,6 +43,7 @@ export function AddProductsPage({
   onAddBrand,
   onAddGamma
 }: AddProductsPageProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -55,7 +56,9 @@ export function AddProductsPage({
         const importedProducts = parseCSV(csvText)
         
         if (importedProducts.length === 0) {
-          toast.error('Brak poprawnych produktów w pliku CSV')
+          toast.error('Brak poprawnych produktów w pliku CSV', {
+            description: 'Upewnij się że plik zawiera kolumny: Kod kreskowy, Nazwa, Marka, Kategoria, Cena brutto'
+          })
           return
         }
 
@@ -64,38 +67,56 @@ export function AddProductsPage({
           const statuses = p.statuses && p.statuses.length > 0 
             ? p.statuses 
             : Array(quantity).fill('available')
-          const priceGross = p.price || 0
+          const discounts = p.discounts && p.discounts.length > 0
+            ? p.discounts
+            : Array(quantity).fill(0)
+          const priceGross = p.priceGross || p.price || 0
+          const priceNet = p.priceNet || (priceGross / 1.23)
+          const vatRate = p.vatRate || 23
+          const salePrice = p.salePrice || (priceNet * 1.8 * (1 + vatRate / 100))
+          
           return {
             id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
             barcode: p.barcode!,
             name: p.name!,
-            brand: p.brand || 'Nieznana',
+            brand: p.brand || '',
             mainCategory: p.mainCategory || 'resale',
-            category: p.category!,
-            priceNet: priceGross / 1.23,
+            category: p.category || 'Inne',
+            gamma: p.gamma || '',
+            priceNet: priceNet,
             priceGross: priceGross,
-            vatRate: 23 as const,
+            vatRate: vatRate as 23 | 8 | 5 | 0,
             price: priceGross,
-            salePrice: p.salePrice || (priceGross * 1.8),
+            salePrice: salePrice,
             quantity: quantity,
-            purchaseDate: p.purchaseDate!,
+            purchaseDate: p.purchaseDate || new Date().toISOString().split('T')[0],
             statuses: statuses,
-            discounts: Array(quantity).fill(0),
-            notes: p.notes,
+            discounts: discounts,
+            notes: p.notes || '',
             updatedAt: new Date().toISOString()
           }
         })
 
         onImport(newProducts)
-        toast.success(`Zaimportowano ${newProducts.length} produktów`)
+        toast.success(`Zaimportowano ${newProducts.length} produktów`, {
+          description: 'Produkty zostały dodane do bazy'
+        })
       } catch (error) {
+        console.error('Import error:', error)
         toast.error('Błąd importu CSV', {
-          description: 'Sprawdź format pliku'
+          description: 'Sprawdź format pliku i spróbuj ponownie'
         })
       }
     }
     reader.readAsText(file)
     e.target.value = ''
+  }
+
+  const handleDownloadTemplate = () => {
+    downloadImportTemplate()
+    toast.success('Pobrano szablon importu', {
+      description: 'Wypełnij plik i zaimportuj produkty'
+    })
   }
 
   const availableCount = products.reduce((acc, p) => 
@@ -169,19 +190,35 @@ export function AddProductsPage({
             <Button 
               variant="outline"
               className="w-full h-12 text-base gap-2"
-              onClick={() => document.getElementById('csv-upload')?.click()}
+              onClick={() => fileInputRef.current?.click()}
             >
-              <Upload className="w-5 h-5" />
+              <FileArrowUp className="w-5 h-5" />
               Importuj z CSV
             </Button>
             
+            <Button 
+              variant="outline"
+              className="w-full h-10 text-sm gap-2"
+              onClick={handleDownloadTemplate}
+            >
+              <FileArrowDown className="w-4 h-4" />
+              Pobierz Szablon CSV
+            </Button>
+            
             <input
-              id="csv-upload"
+              ref={fileInputRef}
               type="file"
               accept=".csv"
               onChange={handleImport}
               className="hidden"
             />
+
+            <div className="p-3 bg-muted/30 rounded-lg border border-dashed">
+              <p className="text-xs text-muted-foreground text-center">
+                <strong>Format CSV:</strong> separator średnik (;), kodowanie UTF-8<br/>
+                Wymagane kolumny: Kod kreskowy, Nazwa, Marka, Kategoria
+              </p>
+            </div>
 
             <div className="grid grid-cols-2 gap-4 pt-4 border-t">
               <div className="text-center p-4 bg-muted/50 rounded-lg">
