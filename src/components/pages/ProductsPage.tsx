@@ -34,6 +34,7 @@ export function ProductsPage({ products, onEditProduct, onDeleteProduct }: Produ
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [mainCategoryFilter, setMainCategoryFilter] = useState<string>('all')
   const [gammaFilter, setGammaFilter] = useState<string>('all')
+  const [brandFilter, setBrandFilter] = useState<string>('all')
   const isMobile = useIsMobile()
 
   // Pobierz unikalne gammy z produktów
@@ -45,6 +46,17 @@ export function ProductsPage({ products, onEditProduct, onDeleteProduct }: Produ
       }
     })
     return Array.from(gammas).sort()
+  }, [products])
+
+  // Pobierz unikalne marki z produktów
+  const uniqueBrands = useMemo(() => {
+    const brands = new Set<string>()
+    products.forEach(p => {
+      if (p.brand && p.brand.trim() !== '') {
+        brands.add(p.brand)
+      }
+    })
+    return Array.from(brands).sort()
   }, [products])
 
   const filteredProducts = useMemo(() => {
@@ -60,10 +72,11 @@ export function ProductsPage({ products, onEditProduct, onDeleteProduct }: Produ
       const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter
       const matchesMainCategory = mainCategoryFilter === 'all' || product.mainCategory === mainCategoryFilter
       const matchesGamma = gammaFilter === 'all' || product.gamma === gammaFilter
+      const matchesBrand = brandFilter === 'all' || product.brand === brandFilter
 
-      return matchesSearch && matchesStatus && matchesCategory && matchesMainCategory && matchesGamma
+      return matchesSearch && matchesStatus && matchesCategory && matchesMainCategory && matchesGamma && matchesBrand
     })
-  }, [products, searchQuery, statusFilter, categoryFilter, mainCategoryFilter, gammaFilter])
+  }, [products, searchQuery, statusFilter, categoryFilter, mainCategoryFilter, gammaFilter, brandFilter])
 
   const handleExport = () => {
     if (filteredProducts.length === 0) {
@@ -155,6 +168,21 @@ export function ProductsPage({ products, onEditProduct, onDeleteProduct }: Produ
               <SelectItem value="all">Wszystkie gammy</SelectItem>
               {uniqueGammas.map(gamma => (
                 <SelectItem key={gamma} value={gamma}>{gamma}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Drugi wiersz filtrów - Marka */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+          <Select value={brandFilter} onValueChange={setBrandFilter}>
+            <SelectTrigger className="h-11">
+              <SelectValue placeholder="Filtruj markę" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Wszystkie marki</SelectItem>
+              {uniqueBrands.map(brand => (
+                <SelectItem key={brand} value={brand}>{brand}</SelectItem>
               ))}
             </SelectContent>
           </Select>

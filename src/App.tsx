@@ -70,6 +70,8 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
   }
 
   const [products, setProducts] = useKV<Product[]>('salon-products', [])
+  const [brands, setBrands] = useState<string[]>([])
+  const [gammas, setGammas] = useState<string[]>([])
   const [currentPage, setCurrentPage] = useState<PageType>('add')
   const [dialogOpen, setDialogOpen] = useState(false)
   const [deliveryDialogOpen, setDeliveryDialogOpen] = useState(false)
@@ -86,6 +88,70 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
     queueUpdateProduct, 
     queueDeleteProduct 
   } = useOfflineSync()
+
+  // Ładowanie marek i gamm z API
+  useEffect(() => {
+    const loadBrandsAndGammas = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || window.location.origin
+        const [brandsRes, gammasRes] = await Promise.all([
+          fetch(`${apiUrl}/api/brands`),
+          fetch(`${apiUrl}/api/gammas`)
+        ])
+        if (brandsRes.ok) {
+          const data = await brandsRes.json()
+          setBrands(data.brands || [])
+        }
+        if (gammasRes.ok) {
+          const data = await gammasRes.json()
+          setGammas(data.gammas || [])
+        }
+      } catch (error) {
+        console.error('Error loading brands/gammas:', error)
+      }
+    }
+    loadBrandsAndGammas()
+  }, [])
+
+  // Dodawanie nowej marki
+  const handleAddBrand = async (brandName: string) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || window.location.origin
+      const response = await fetch(`${apiUrl}/api/brands`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: brandName })
+      })
+      if (response.ok) {
+        setBrands(prev => [...prev, brandName].sort())
+        toast.success(`Dodano markę: ${brandName}`)
+      }
+    } catch (error) {
+      console.error('Error adding brand:', error)
+      // Dodaj lokalnie nawet przy błędzie
+      setBrands(prev => [...prev, brandName].sort())
+    }
+  }
+
+  // Dodawanie nowej gammy
+  const handleAddGamma = async (gammaName: string) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || window.location.origin
+      const response = await fetch(`${apiUrl}/api/gammas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: gammaName })
+      })
+      if (response.ok) {
+        setGammas(prev => [...prev, gammaName].sort())
+        toast.success(`Dodano gammę: ${gammaName}`)
+      }
+    } catch (error) {
+      console.error('Error adding gamma:', error)
+      // Dodaj lokalnie nawet przy błędzie
+      setGammas(prev => [...prev, gammaName].sort())
+    }
+  }
 
   useEffect(() => {
     const loadProductsFromServer = async () => {
@@ -313,6 +379,10 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
               scannedBarcode={scannedBarcode}
               editingProduct={editingProduct}
               onImport={handleImportProducts}
+              brands={brands}
+              gammas={gammas}
+              onAddBrand={handleAddBrand}
+              onAddGamma={handleAddGamma}
             />
           </>
         )

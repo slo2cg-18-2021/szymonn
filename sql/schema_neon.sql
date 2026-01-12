@@ -9,6 +9,20 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+-- Brands table - lista marek produktów
+CREATE TABLE IF NOT EXISTS brands (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Gammas table - lista linii produktowych (gamma/gamme)
+CREATE TABLE IF NOT EXISTS gammas (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
 -- Products table
 CREATE TABLE IF NOT EXISTS products (
   id TEXT PRIMARY KEY,

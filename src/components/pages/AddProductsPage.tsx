@@ -21,6 +21,10 @@ interface AddProductsPageProps {
   scannedBarcode: string
   editingProduct?: Product
   onImport: (products: Product[]) => void
+  brands?: string[]
+  gammas?: string[]
+  onAddBrand?: (brand: string) => void
+  onAddGamma?: (gamma: string) => void
 }
 
 export function AddProductsPage({ 
@@ -33,7 +37,11 @@ export function AddProductsPage({
   onOpenDialog,
   scannedBarcode,
   editingProduct,
-  onImport
+  onImport,
+  brands = [],
+  gammas = [],
+  onAddBrand,
+  onAddGamma
 }: AddProductsPageProps) {
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -223,6 +231,10 @@ export function AddProductsPage({
         onSave={onSaveProduct}
         initialBarcode={scannedBarcode}
         existingProduct={editingProduct}
+        brands={brands}
+        gammas={gammas}
+        onAddBrand={onAddBrand}
+        onAddGamma={onAddGamma}
       />
     </motion.div>
   )

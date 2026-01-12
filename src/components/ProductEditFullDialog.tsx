@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { ComboBox } from '@/components/ui/combo-box'
 import { 
   Product, 
   MAIN_CATEGORY_LABELS, 
@@ -30,6 +31,10 @@ interface ProductEditFullDialogProps {
   product?: Product
   onSave: (product: Product) => void
   onDelete: (productId: string) => void
+  brands?: string[]
+  gammas?: string[]
+  onAddBrand?: (brand: string) => void
+  onAddGamma?: (gamma: string) => void
 }
 
 export function ProductEditFullDialog({ 
@@ -37,7 +42,11 @@ export function ProductEditFullDialog({
   onOpenChange, 
   product,
   onSave,
-  onDelete
+  onDelete,
+  brands = [],
+  gammas = [],
+  onAddBrand,
+  onAddGamma
 }: ProductEditFullDialogProps) {
   const [formData, setFormData] = useState({
     barcode: '',
@@ -266,13 +275,15 @@ export function ProductEditFullDialog({
             {/* Marka i Kategoria */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="brand">Marka</Label>
-                <Input
-                  id="brand"
+                <Label>Marka</Label>
+                <ComboBox
+                  options={brands}
                   value={formData.brand}
-                  onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                  placeholder="np. L'Oréal"
-                  className="h-11"
+                  onChange={(value) => setFormData({ ...formData, brand: value })}
+                  onAddNew={onAddBrand}
+                  placeholder="Wybierz markę..."
+                  searchPlaceholder="Szukaj lub wpisz nową..."
+                  emptyText="Brak marek"
                 />
               </div>
 
@@ -296,13 +307,15 @@ export function ProductEditFullDialog({
 
             {/* Gamma */}
             <div className="grid gap-2">
-              <Label htmlFor="gamma">Gamma / Linia Produktów</Label>
-              <Input
-                id="gamma"
+              <Label>Gamma / Linia Produktów</Label>
+              <ComboBox
+                options={gammas}
                 value={formData.gamma}
-                onChange={(e) => setFormData({ ...formData, gamma: e.target.value })}
-                placeholder="np. Serie Expert, Kérastase Genesis"
-                className="h-11"
+                onChange={(value) => setFormData({ ...formData, gamma: value })}
+                onAddNew={onAddGamma}
+                placeholder="Wybierz lub wpisz gammę..."
+                searchPlaceholder="Szukaj lub wpisz nową..."
+                emptyText="Brak gamm"
               />
               <p className="text-xs text-muted-foreground">Opcjonalne - linia lub seria produktów</p>
             </div>
