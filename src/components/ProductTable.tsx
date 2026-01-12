@@ -1,15 +1,30 @@
 import { Product } from '@/lib/types'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Pencil, Trash } from '@phosphor-icons/react'
 
 interface ProductTableProps {
   products: Product[]
   onEdit: (product: Product) => void
   onDelete: (id: string) => void
+  selectedIds?: Set<string>
+  onSelectProduct?: (id: string, checked: boolean) => void
+  onSelectAll?: (checked: boolean) => void
+  selectionMode?: boolean
 }
 
-export function ProductTable({ products, onEdit, onDelete }: ProductTableProps) {
+export function ProductTable({ 
+  products, 
+  onEdit, 
+  onDelete,
+  selectedIds = new Set(),
+  onSelectProduct,
+  onSelectAll,
+  selectionMode = false
+}: ProductTableProps) {
+  const allSelected = products.length > 0 && products.every(p => selectedIds.has(p.id))
+  const someSelected = products.some(p => selectedIds.has(p.id))
 
   if (products.length === 0) {
     return (
@@ -26,6 +41,16 @@ export function ProductTable({ products, onEdit, onDelete }: ProductTableProps) 
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50">
+              {selectionMode && (
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={(checked) => onSelectAll?.(!!checked)}
+                    aria-label="Zaznacz wszystkie"
+                    className={someSelected && !allSelected ? 'data-[state=checked]:bg-primary/50' : ''}
+                  />
+                </TableHead>
+              )}
               <TableHead className="font-semibold">Kod</TableHead>
               <TableHead className="font-semibold">Nazwa</TableHead>
               <TableHead className="font-semibold">Marka</TableHead>
@@ -52,7 +77,16 @@ export function ProductTable({ products, onEdit, onDelete }: ProductTableProps) 
               const inUse = statuses.filter(s => s === 'in-use').length
               const price = Number(product.priceGross) || Number(product.price) || 0
               return (
-              <TableRow key={product.id} className="hover:bg-muted/30">
+              <TableRow key={product.id} className={`hover:bg-muted/30 ${selectedIds.has(product.id) ? 'bg-primary/10' : ''}`}>
+                {selectionMode && (
+                  <TableCell>
+                    <Checkbox
+                      checked={selectedIds.has(product.id)}
+                      onCheckedChange={(checked) => onSelectProduct?.(product.id, !!checked)}
+                      aria-label={`Zaznacz ${product.name}`}
+                    />
+                  </TableCell>
+                )}
                 <TableCell className="font-mono text-sm">{product.barcode}</TableCell>
                 <TableCell className="font-medium">{product.name}</TableCell>
                 <TableCell className="text-muted-foreground">{product.brand || '-'}</TableCell>

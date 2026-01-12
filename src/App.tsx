@@ -328,6 +328,19 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
     setProducts((currentProducts) => (currentProducts || []).filter(p => p.id !== id))
     queueDeleteProduct(id)
     toast.success('Produkt usunięty')
+
+  const handleBulkUpdateProducts = (ids: string[], updates: Partial<Product>) => {
+    setProducts((current) =>
+      (current || []).map(p => {
+        if (ids.includes(p.id)) {
+          const updatedProduct = { ...p, ...updates, updatedAt: new Date().toISOString() }
+          queueUpdateProduct(updatedProduct)
+          return updatedProduct
+        }
+        return p
+      })
+    )
+  }
   }
 
   const handleImportProducts = (newProducts: Product[]) => {
@@ -430,6 +443,7 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
               products={products || []}
               onEditProduct={handleEditProduct}
               onDeleteProduct={handleDeleteProduct}
+              onBulkUpdate={handleBulkUpdateProducts}
             />
             <ProductEditFullDialog
               open={editDialogOpen}
