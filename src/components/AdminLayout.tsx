@@ -14,11 +14,12 @@ import {
   List,
   CaretLeft,
   CaretRight,
-  Scissors
+  Scissors,
+  PencilSimple
 } from '@phosphor-icons/react'
 import { useIsMobile } from '@/hooks/use-mobile'
 
-export type PageType = 'add' | 'inventory' | 'products' | 'reports' | 'settings'
+export type PageType = 'add' | 'edit' | 'inventory' | 'products' | 'reports' | 'settings'
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -40,6 +41,12 @@ const navItems: NavItem[] = [
     label: 'Dodaj Produkty', 
     icon: <Barcode className="w-5 h-5" />,
     description: 'Skanuj i dodawaj nowe produkty'
+  },
+  { 
+    id: 'edit', 
+    label: 'Edytuj Produkty', 
+    icon: <PencilSimple className="w-5 h-5" />,
+    description: 'Edytuj istniejące produkty'
   },
   { 
     id: 'inventory', 

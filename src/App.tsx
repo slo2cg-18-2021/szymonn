@@ -4,6 +4,7 @@ import { Product, ProductStatus, calculateSalePrice } from '@/lib/types'
 import Login from '@/components/Login'
 import { AdminLayout, PageType } from '@/components/AdminLayout'
 import { AddProductsPage } from '@/components/pages/AddProductsPage'
+import { EditProductPage } from '@/components/pages/EditProductPage'
 import { ProductsPage } from '@/components/pages/ProductsPage'
 import { ReportsPage } from '@/components/pages/ReportsPage'
 import { SettingsPage } from '@/components/pages/SettingsPage'
@@ -279,6 +280,17 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
               scannedBarcode={scannedBarcode}
               editingProduct={editingProduct}
               onImport={handleImportProducts}
+            />
+          </>
+        )
+      case 'edit':
+        return (
+          <>
+            <OfflineStatusBanner />
+            <EditProductPage
+              products={products || []}
+              onUpdateProduct={handleEditProduct}
+              onDeleteProduct={handleDeleteProduct}
             />
           </>
         )
