@@ -7,14 +7,13 @@ interface StatsCardsProps {
 }
 
 export function StatsCards({ products }: StatsCardsProps) {
-  // Helper do normalizacji statusów (mogą przyjść jako JSON string z bazy)
+  // Helper do normalizacji statusów
   const getStatuses = (p: Product): string[] => {
     let statuses = p.statuses
     if (typeof statuses === 'string') {
-      try { statuses = JSON.parse(statuses) } catch { statuses = [] }
+      try { statuses = JSON.parse(statuses as any) } catch { statuses = [] }
     }
     if (!Array.isArray(statuses) || statuses.length === 0) {
-      // Jeśli brak statusów ale jest quantity, traktuj jako available
       return p.quantity > 0 ? Array(p.quantity).fill('available') : []
     }
     return statuses
@@ -26,18 +25,17 @@ export function StatsCards({ products }: StatsCardsProps) {
   const usedCount = products.reduce((sum, p) => sum + getStatuses(p).filter(s => s === 'used').length, 0)
   const soldCount = products.reduce((sum, p) => sum + getStatuses(p).filter(s => s === 'sold' || s === 'sold-discount').length, 0)
   
-  // Wartość magazynu (dostępne + w użyciu) w cenach zakupu
-  const totalValue = products
-    .reduce((sum, p) => {
-      const price = Number(p.priceGross) || Number(p.price) || 0
-      const activeCount = getStatuses(p).filter(s => s === 'available' || s === 'in-use').length
-      return sum + (price * activeCount)
-    }, 0)
+  // Wartość magazynu - użyj salePrice/1.8 jako cenę zakupu jeśli price jest 0
+  const totalValue = products.reduce((sum, p) => {
+    const salePrice = Number(p.salePrice) || 0
+    const price = Number(p.price) || Number(p.priceGross) || (salePrice > 0 ? salePrice / 1.8 : 0)
+    const activeCount = getStatuses(p).filter(s => s === 'available' || s === 'in-use').length
+    return sum + (price * activeCount)
+  }, 0)
   
   // Wartość sprzedaży (z marżą 80%, uwzględniając rabaty)
   const soldValue = products.reduce((sum, p) => {
-    const basePrice = Number(p.priceGross) || Number(p.price) || 0
-    const salePrice = p.salePrice || calculateSalePrice(basePrice)
+    const salePrice = p.salePrice || calculateSalePrice(Number(p.price))
     let productSoldValue = 0
     
     getStatuses(p).forEach((status, index) => {

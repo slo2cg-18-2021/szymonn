@@ -34,10 +34,12 @@ export default async function handler(req: any, res: any) {
       const products = await withClient(async (client) => {
         const r = await client.query('SELECT * FROM products')
         return r.rows.map((row: any) => {
-          const price = parseFloat(row.pricegross) || parseFloat(row.price) || 0
+          const salePrice = parseFloat(row.saleprice) || 0
+          // Cena zakupu: jeśli price jest null, oblicz z saleprice (dzieląc przez 1.8)
+          const price = parseFloat(row.price) || (salePrice > 0 ? salePrice / 1.8 : 0)
           const quantity = parseInt(row.quantity) || 1
           
-          // Parse statuses - JSONB z Postgres może być już obiektem lub stringiem
+          // Parse statuses - JSONB z Postgres
           let statuses = row.statuses
           if (typeof statuses === 'string') {
             try { statuses = JSON.parse(statuses) } catch { statuses = [] }
@@ -59,10 +61,8 @@ export default async function handler(req: any, res: any) {
             mainCategory: row.maincategory || 'resale',
             category: row.category,
             price: price,
-            priceNet: parseFloat(row.pricenet) || (price / 1.23),
             priceGross: price,
-            vatRate: parseInt(row.vatrate) || 23,
-            salePrice: parseFloat(row.saleprice) || price * 1.8,
+            salePrice: salePrice > 0 ? salePrice : price * 1.8,
             quantity: quantity,
             purchaseDate: row.purchasedate,
             statuses: statuses,
