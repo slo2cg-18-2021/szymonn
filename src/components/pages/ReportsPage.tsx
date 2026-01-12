@@ -80,7 +80,9 @@ export function ReportsPage({ products }: ReportsPageProps) {
       }
       
       // Sprzedaż
-      const salePrice = product.salePrice || calculateSalePrice(Number(product.price))
+      const priceNet = Number(product.priceNet) || (Number(product.price) / 1.23)
+      const vatRate = product.vatRate || 23
+      const salePrice = product.salePrice || calculateSalePrice(priceNet, vatRate)
       
       ;(product.statuses || []).forEach((status, index) => {
         if ((status === 'sold' || status === 'sold-discount') && product.updatedAt) {

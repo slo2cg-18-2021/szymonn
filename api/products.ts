@@ -60,6 +60,7 @@ export default async function handler(req: any, res: any) {
             brand: row.brand || '',
             mainCategory: row.maincategory || 'resale',
             category: row.category,
+            gamma: row.gamma || '',
             price: price,
             priceGross: price,
             salePrice: salePrice > 0 ? salePrice : price * 1.8,
@@ -87,17 +88,17 @@ export default async function handler(req: any, res: any) {
           if (op.type === 'create' && op.product) {
             const p = op.product
             await client.query(
-              `INSERT INTO products(id, barcode, name, mainCategory, category, price, salePrice, quantity, purchaseDate, statuses, discounts, notes, updatedAt)
-               VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+              `INSERT INTO products(id, barcode, name, brand, mainCategory, category, gamma, price, salePrice, quantity, purchaseDate, statuses, discounts, notes, updatedAt)
+               VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
                ON CONFLICT (id) DO NOTHING`,
-              [p.id, p.barcode, p.name, p.mainCategory || 'resale', p.category, p.price, p.salePrice || (p.price * 1.8), p.quantity || 1, p.purchaseDate, JSON.stringify(p.statuses || []), JSON.stringify(p.discounts || []), p.notes, p.updatedAt]
+              [p.id, p.barcode, p.name, p.brand || '', p.mainCategory || 'resale', p.category, p.gamma || '', p.price, p.salePrice || (p.price * 1.8), p.quantity || 1, p.purchaseDate, JSON.stringify(p.statuses || []), JSON.stringify(p.discounts || []), p.notes, p.updatedAt]
             )
             outProducts.push(p)
           } else if (op.type === 'update' && op.product) {
             const p = op.product
             await client.query(
-              `UPDATE products SET barcode=$1, name=$2, mainCategory=$3, category=$4, price=$5, salePrice=$6, quantity=$7, purchaseDate=$8, statuses=$9, discounts=$10, notes=$11, updatedAt=$12 WHERE id=$13`,
-              [p.barcode, p.name, p.mainCategory || 'resale', p.category, p.price, p.salePrice || (p.price * 1.8), p.quantity || 1, p.purchaseDate, JSON.stringify(p.statuses || []), JSON.stringify(p.discounts || []), p.notes, p.updatedAt, p.id]
+              `UPDATE products SET barcode=$1, name=$2, brand=$3, mainCategory=$4, category=$5, gamma=$6, price=$7, salePrice=$8, quantity=$9, purchaseDate=$10, statuses=$11, discounts=$12, notes=$13, updatedAt=$14 WHERE id=$15`,
+              [p.barcode, p.name, p.brand || '', p.mainCategory || 'resale', p.category, p.gamma || '', p.price, p.salePrice || (p.price * 1.8), p.quantity || 1, p.purchaseDate, JSON.stringify(p.statuses || []), JSON.stringify(p.discounts || []), p.notes, p.updatedAt, p.id]
             )
             outProducts.push(p)
           } else if (op.type === 'delete' && op.productId) {

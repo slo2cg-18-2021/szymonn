@@ -72,7 +72,9 @@ export function SalesReportDialog({ products }: SalesReportDialogProps) {
       }
       
       // Sprzedaż - na podstawie updatedAt dla statusów 'sold' i 'sold-discount'
-      const salePrice = product.salePrice || calculateSalePrice(Number(product.price))
+      const priceNet = Number(product.priceNet) || (Number(product.price) / 1.23)
+      const vatRate = product.vatRate || 23
+      const salePrice = product.salePrice || calculateSalePrice(priceNet, vatRate)
       
       ;(product.statuses || []).forEach((status, index) => {
         if ((status === 'sold' || status === 'sold-discount') && product.updatedAt) {

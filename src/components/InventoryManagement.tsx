@@ -64,7 +64,9 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
   const handleDiscountConfirm = () => {
     if (!selectedProduct || discountIndex === null) return
 
-    const salePrice = selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.price))
+    const priceNet = Number(selectedProduct.priceNet) || (Number(selectedProduct.price) / 1.23)
+    const vatRate = selectedProduct.vatRate || 23
+    const salePrice = selectedProduct.salePrice || calculateSalePrice(priceNet, vatRate)
     let discount: number
     let finalPrice: number
 
@@ -112,14 +114,18 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
   // Oblicz cenę końcową na podstawie rabatu procentowego
   const calculatedFinalPrice = useMemo(() => {
     if (!selectedProduct || !discountValue) return null
-    const salePrice = selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.price))
+    const priceNet = Number(selectedProduct.priceNet) || (Number(selectedProduct.price) / 1.23)
+    const vatRate = selectedProduct.vatRate || 23
+    const salePrice = selectedProduct.salePrice || calculateSalePrice(priceNet, vatRate)
     return calculateDiscountedPrice(salePrice, parseFloat(discountValue) || 0)
   }, [selectedProduct, discountValue])
 
   // Oblicz rabat na podstawie ceny końcowej
   const calculatedDiscount = useMemo(() => {
     if (!selectedProduct || !finalPriceValue) return null
-    const salePrice = selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.price))
+    const priceNet = Number(selectedProduct.priceNet) || (Number(selectedProduct.price) / 1.23)
+    const vatRate = selectedProduct.vatRate || 23
+    const salePrice = selectedProduct.salePrice || calculateSalePrice(priceNet, vatRate)
     const finalPrice = parseFloat(finalPriceValue) || 0
     const discount = ((salePrice - finalPrice) / salePrice) * 100
     return Math.max(0, Math.min(100, discount))
@@ -143,7 +149,7 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
             {selectedProduct && (
               <div className="text-sm space-y-2 p-3 bg-muted/50 rounded-lg">
                 <p>Cena zakupu: <span className="font-medium">{Number(selectedProduct.price).toFixed(2)} zł</span></p>
-                <p>Cena sprzedaży (marża 80%): <span className="font-bold text-green-600">{(selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.price))).toFixed(2)} zł</span></p>
+                <p>Cena sprzedaży (marża 80% od netto): <span className="font-bold text-green-600">{(selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.priceNet) || Number(selectedProduct.price) / 1.23, selectedProduct.vatRate || 23)).toFixed(2)} zł</span></p>
               </div>
             )}
             
@@ -186,7 +192,7 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
                   step="0.01"
                   value={finalPriceValue}
                   onChange={(e) => setFinalPriceValue(e.target.value)}
-                  placeholder={selectedProduct ? (selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.price))).toFixed(2) : '0.00'}
+                  placeholder={selectedProduct ? (selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.priceNet) || Number(selectedProduct.price) / 1.23, selectedProduct.vatRate || 23)).toFixed(2) : '0.00'}
                 />
                 {calculatedDiscount !== null && (
                   <p className="text-sm text-muted-foreground">
@@ -281,7 +287,7 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
                   </div>
                   <div className="text-sm mt-2 space-y-1">
                     <p>Cena zakupu: <span className="font-medium">{Number(selectedProduct.price).toFixed(2)} zł</span></p>
-                    <p>Cena sprzedaży (marża 80%): <span className="font-medium text-green-600">{(selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.price))).toFixed(2)} zł</span></p>
+                    <p>Cena sprzedaży (marża 80% od netto): <span className="font-medium text-green-600">{(selectedProduct.salePrice || calculateSalePrice(Number(selectedProduct.priceNet) || Number(selectedProduct.price) / 1.23, selectedProduct.vatRate || 23)).toFixed(2)} zł</span></p>
                   </div>
                 </CardHeader>
                 <CardContent>

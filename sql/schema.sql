@@ -15,11 +15,16 @@ CREATE TABLE IF NOT EXISTS `products` (
   `id` VARCHAR(80) NOT NULL,
   `barcode` VARCHAR(255) DEFAULT NULL,
   `name` VARCHAR(255) DEFAULT NULL,
+  `brand` VARCHAR(255) DEFAULT NULL,
+  `mainCategory` VARCHAR(50) DEFAULT 'resale',
   `category` VARCHAR(100) DEFAULT NULL,
+  `gamma` VARCHAR(255) DEFAULT NULL,
   `price` DECIMAL(10,2) DEFAULT NULL,
+  `salePrice` DECIMAL(10,2) DEFAULT NULL,
   `quantity` INT DEFAULT 1,
   `purchaseDate` VARCHAR(50) DEFAULT NULL,
   `statuses` TEXT DEFAULT NULL, -- JSON encoded array
+  `discounts` TEXT DEFAULT NULL, -- JSON encoded array
   `notes` TEXT DEFAULT NULL,
   `updatedAt` VARCHAR(50) DEFAULT NULL,
   PRIMARY KEY (`id`)

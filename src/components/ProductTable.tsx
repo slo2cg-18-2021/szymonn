@@ -28,7 +28,9 @@ export function ProductTable({ products, onEdit, onDelete }: ProductTableProps) 
             <TableRow className="bg-muted/50">
               <TableHead className="font-semibold">Kod</TableHead>
               <TableHead className="font-semibold">Nazwa</TableHead>
+              <TableHead className="font-semibold">Marka</TableHead>
               <TableHead className="font-semibold">Kategoria</TableHead>
+              <TableHead className="font-semibold">Gamma</TableHead>
               <TableHead className="font-semibold">Cena</TableHead>
               <TableHead className="font-semibold">Ilość</TableHead>
               <TableHead className="font-semibold">Dostępne</TableHead>
@@ -39,14 +41,23 @@ export function ProductTable({ products, onEdit, onDelete }: ProductTableProps) 
           </TableHeader>
           <TableBody>
             {products.map((product) => {
-              const available = product.statuses.filter(s => s === 'available').length
-              const inUse = product.statuses.filter(s => s === 'in-use').length
+              // Normalizuj statusy
+              let statuses = product.statuses || []
+              if (typeof statuses === 'string') {
+                try { statuses = JSON.parse(statuses as any) } catch { statuses = [] }
+              }
+              if (!Array.isArray(statuses)) statuses = []
+              
+              const available = statuses.filter(s => s === 'available').length
+              const inUse = statuses.filter(s => s === 'in-use').length
               const price = Number(product.priceGross) || Number(product.price) || 0
               return (
               <TableRow key={product.id} className="hover:bg-muted/30">
                 <TableCell className="font-mono text-sm">{product.barcode}</TableCell>
                 <TableCell className="font-medium">{product.name}</TableCell>
+                <TableCell className="text-muted-foreground">{product.brand || '-'}</TableCell>
                 <TableCell>{product.category}</TableCell>
+                <TableCell className="text-muted-foreground">{product.gamma || '-'}</TableCell>
                 <TableCell>{price.toFixed(2)} zł</TableCell>
                 <TableCell>{product.quantity}</TableCell>
                 <TableCell><span className="text-green-600 font-medium">{available}</span></TableCell>

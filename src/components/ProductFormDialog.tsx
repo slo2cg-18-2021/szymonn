@@ -44,6 +44,7 @@ export function ProductFormDialog({
     brand: '',
     mainCategory: 'resale' as MainCategory,
     category: 'Pielęgnacja',
+    gamma: '',
     priceNet: '',
     priceGross: '',
     vatRate: 23 as VatRate,
@@ -72,6 +73,7 @@ export function ProductFormDialog({
           brand: existingProduct.brand || '',
           mainCategory: existingProduct.mainCategory || 'resale',
           category: existingProduct.category,
+          gamma: existingProduct.gamma || '',
           priceNet: priceNet.toFixed(2),
           priceGross: priceGross.toFixed(2),
           vatRate: vatRate,
@@ -88,6 +90,7 @@ export function ProductFormDialog({
           brand: '',
           mainCategory: 'resale',
           category: 'Pielęgnacja',
+          gamma: '',
           priceNet: '',
           priceGross: '',
           vatRate: 23,
@@ -161,10 +164,11 @@ export function ProductFormDialog({
       brand: formData.brand,
       mainCategory: formData.mainCategory,
       category: formData.category,
+      gamma: formData.gamma || undefined,
       priceNet: priceNet,
       priceGross: priceGross,
       vatRate: formData.vatRate,
-      salePrice: calculateSalePrice(priceGross),
+      salePrice: calculateSalePrice(priceNet, formData.vatRate),
       quantity: parseInt(formData.quantity) || 1,
       purchaseDate: formData.purchaseDate,
       statuses: Array(parseInt(formData.quantity) || 1).fill(formData.initialStatus),
@@ -266,6 +270,19 @@ export function ProductFormDialog({
               </div>
             </div>
 
+            {/* Gamma - podkategoria */}
+            <div className="grid gap-2">
+              <Label htmlFor="gamma">Gamma / Linia Produktów</Label>
+              <Input
+                id="gamma"
+                value={formData.gamma}
+                onChange={(e) => setFormData({ ...formData, gamma: e.target.value })}
+                placeholder="np. Serie Expert, Kérastase Genesis"
+                className="h-11"
+              />
+              <p className="text-xs text-muted-foreground">Opcjonalne - linia lub seria produktów</p>
+            </div>
+
             {/* Nazwa produktu */}
             <div className="grid gap-2">
               <Label htmlFor="name">Nazwa Produktu *</Label>
@@ -345,11 +362,11 @@ export function ProductFormDialog({
                   </div>
                 </div>
 
-                {formData.priceGross && (
+                {formData.priceNet && (
                   <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
-                    <span className="text-green-700">Cena sprzedaży (marża 80%): </span>
+                    <span className="text-green-700">Cena sprzedaży (marża 80% od netto + VAT): </span>
                     <span className="font-bold text-green-800">
-                      {calculateSalePrice(parseFloat(formData.priceGross) || 0).toFixed(2)} zł
+                      {calculateSalePrice(parseFloat(formData.priceNet) || 0, formData.vatRate).toFixed(2)} zł
                     </span>
                   </div>
                 )}

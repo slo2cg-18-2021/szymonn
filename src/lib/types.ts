@@ -11,6 +11,7 @@ export interface Product {
   brand: string // Marka
   mainCategory: MainCategory
   category: string
+  gamma?: string // Gamma/Gamme - podkategoria
   priceNet: number // Cena netto
   priceGross: number // Cena brutto
   vatRate: VatRate // Stawka VAT
@@ -87,9 +88,10 @@ export const calculateNetPrice = (grossPrice: number, vatRate: VatRate): number 
   return grossPrice / (1 + vatRate / 100)
 }
 
-// Oblicz cenę sprzedaży z marżą 80%
-export const calculateSalePrice = (basePrice: number): number => {
-  return basePrice * 1.8 // cena bazowa + 80% marży
+// Oblicz cenę sprzedaży z marżą 80% od ceny netto
+export const calculateSalePrice = (priceNet: number, vatRate: VatRate = 23): number => {
+  const netWithMargin = priceNet * 1.8 // cena netto + 80% marży
+  return netWithMargin * (1 + vatRate / 100) // dodaj VAT
 }
 
 // Oblicz cenę po rabacie

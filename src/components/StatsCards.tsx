@@ -35,7 +35,9 @@ export function StatsCards({ products }: StatsCardsProps) {
   
   // Wartość sprzedaży (z marżą 80%, uwzględniając rabaty)
   const soldValue = products.reduce((sum, p) => {
-    const salePrice = p.salePrice || calculateSalePrice(Number(p.price))
+    const priceNet = Number(p.priceNet) || (Number(p.price) / 1.23)
+    const vatRate = p.vatRate || 23
+    const salePrice = p.salePrice || calculateSalePrice(priceNet, vatRate)
     let productSoldValue = 0
     
     getStatuses(p).forEach((status, index) => {

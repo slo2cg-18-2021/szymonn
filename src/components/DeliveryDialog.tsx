@@ -195,7 +195,7 @@ export function DeliveryDialog({
                   </div>
                   {newPriceGross && (
                     <p className="text-sm text-yellow-700">
-                      Nowa cena sprzedaży: <strong>{calculateSalePrice(parseFloat(newPriceGross) || 0).toFixed(2)} zł</strong>
+                      Nowa cena sprzedaży (marża 80% od netto + VAT): <strong>{calculateSalePrice((parseFloat(newPriceGross) || 0) / 1.23, 23).toFixed(2)} zł</strong>
                     </p>
                   )}
                 </div>

@@ -45,6 +45,7 @@ export function ProductEditFullDialog({
     brand: '',
     mainCategory: 'resale' as MainCategory,
     category: 'Pielęgnacja',
+    gamma: '',
     priceNet: '',
     priceGross: '',
     vatRate: 23 as VatRate,
@@ -66,7 +67,7 @@ export function ProductEditFullDialog({
       const priceGross = product.priceGross || product.price || 0
       const vatRate = product.vatRate || 23
       const priceNet = product.priceNet || calculateNetPrice(priceGross, vatRate)
-      const salePrice = product.salePrice || calculateSalePrice(priceGross)
+      const salePrice = product.salePrice || calculateSalePrice(priceNet, vatRate)
       
       setFormData({
         barcode: product.barcode,
@@ -74,6 +75,7 @@ export function ProductEditFullDialog({
         brand: product.brand || '',
         mainCategory: product.mainCategory || 'resale',
         category: product.category,
+        gamma: product.gamma || '',
         priceNet: priceNet.toFixed(2),
         priceGross: priceGross.toFixed(2),
         vatRate: vatRate,
@@ -113,7 +115,7 @@ export function ProductEditFullDialog({
     const price = parseFloat(value) || 0
     if (mode === 'gross') {
       const netPrice = calculateNetPrice(price, formData.vatRate)
-      const salePrice = calculateSalePrice(price)
+      const salePrice = calculateSalePrice(netPrice, formData.vatRate)
       setFormData(prev => ({
         ...prev,
         priceGross: value,
@@ -122,7 +124,7 @@ export function ProductEditFullDialog({
       }))
     } else {
       const grossPrice = calculateGrossPrice(price, formData.vatRate)
-      const salePrice = calculateSalePrice(grossPrice)
+      const salePrice = calculateSalePrice(price, formData.vatRate)
       setFormData(prev => ({
         ...prev,
         priceNet: value,
@@ -174,7 +176,7 @@ export function ProductEditFullDialog({
     
     const priceGross = parseFloat(formData.priceGross) || 0
     const priceNet = parseFloat(formData.priceNet) || 0
-    const salePrice = parseFloat(formData.salePrice) || calculateSalePrice(priceGross)
+    const salePrice = parseFloat(formData.salePrice) || calculateSalePrice(priceNet, formData.vatRate)
     
     if (!formData.barcode || !formData.name) {
       return
@@ -187,6 +189,7 @@ export function ProductEditFullDialog({
       brand: formData.brand,
       mainCategory: formData.mainCategory,
       category: formData.category,
+      gamma: formData.gamma || undefined,
       priceNet: priceNet,
       priceGross: priceGross,
       price: priceGross,
@@ -289,6 +292,19 @@ export function ProductEditFullDialog({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            {/* Gamma */}
+            <div className="grid gap-2">
+              <Label htmlFor="gamma">Gamma / Linia Produktów</Label>
+              <Input
+                id="gamma"
+                value={formData.gamma}
+                onChange={(e) => setFormData({ ...formData, gamma: e.target.value })}
+                placeholder="np. Serie Expert, Kérastase Genesis"
+                className="h-11"
+              />
+              <p className="text-xs text-muted-foreground">Opcjonalne - linia lub seria produktów</p>
             </div>
 
             {/* Nazwa produktu */}

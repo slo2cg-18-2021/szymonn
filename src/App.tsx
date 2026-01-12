@@ -10,6 +10,7 @@ import { ReportsPage } from '@/components/pages/ReportsPage'
 import { SettingsPage } from '@/components/pages/SettingsPage'
 import { InventoryManagement } from '@/components/InventoryManagement'
 import { ProductEditDialog } from '@/components/ProductEditDialog'
+import { ProductEditFullDialog } from '@/components/ProductEditFullDialog'
 import { DeliveryDialog } from '@/components/DeliveryDialog'
 import { OfflineStatusBanner } from '@/components/OfflineStatusBanner'
 import { StatsCards } from '@/components/StatsCards'
@@ -178,7 +179,7 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
         priceGross: newPrice,
         price: newPrice,
         priceNet: newPrice / 1.23,
-        salePrice: calculateSalePrice(newPrice)
+        salePrice: calculateSalePrice(newPrice / 1.23, product.vatRate || 23)
       }),
       updatedAt: new Date().toISOString()
     }
@@ -242,10 +243,18 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
   }
 
   const handleEditProduct = (product: Product) => {
+    // Otwórz dialog edycji z wybranym produktem
+    setEditingProduct(product)
+    setEditDialogOpen(true)
+  }
+
+  const handleSaveEditedProduct = (product: Product) => {
     setProducts((current) =>
       (current || []).map(p => p.id === product.id ? product : p)
     )
     queueUpdateProduct(product)
+    setEditDialogOpen(false)
+    setEditingProduct(undefined)
     toast.success('Produkt zaktualizowany', { duration: 2000 })
   }
 
@@ -352,11 +361,12 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
               onEditProduct={handleEditProduct}
               onDeleteProduct={handleDeleteProduct}
             />
-            <ProductEditDialog
+            <ProductEditFullDialog
               open={editDialogOpen}
               onOpenChange={setEditDialogOpen}
-              onSave={handleEditProduct}
-              products={products || []}
+              product={editingProduct}
+              onSave={handleSaveEditedProduct}
+              onDelete={handleDeleteProduct}
             />
           </>
         )

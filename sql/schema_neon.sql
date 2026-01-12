@@ -14,8 +14,10 @@ CREATE TABLE IF NOT EXISTS products (
   id TEXT PRIMARY KEY,
   barcode TEXT,
   name TEXT,
+  brand TEXT,
   mainCategory TEXT DEFAULT 'resale',
   category TEXT,
+  gamma TEXT,
   price NUMERIC(10,2),
   salePrice NUMERIC(10,2),
   quantity INTEGER DEFAULT 1,
@@ -27,3 +29,14 @@ CREATE TABLE IF NOT EXISTS products (
 );
 
 CREATE INDEX IF NOT EXISTS idx_products_barcode ON products (barcode);
+
+-- Migration: dodaj kolumny brand i gamma jeśli nie istnieją
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='brand') THEN
+    ALTER TABLE products ADD COLUMN brand TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='products' AND column_name='gamma') THEN
+    ALTER TABLE products ADD COLUMN gamma TEXT;
+  END IF;
+END $$;

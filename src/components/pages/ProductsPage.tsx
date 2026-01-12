@@ -33,22 +33,37 @@ export function ProductsPage({ products, onEditProduct, onDeleteProduct }: Produ
   const [statusFilter, setStatusFilter] = useState<ProductStatus | 'all'>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [mainCategoryFilter, setMainCategoryFilter] = useState<string>('all')
+  const [gammaFilter, setGammaFilter] = useState<string>('all')
   const isMobile = useIsMobile()
+
+  // Pobierz unikalne gammy z produktów
+  const uniqueGammas = useMemo(() => {
+    const gammas = new Set<string>()
+    products.forEach(p => {
+      if (p.gamma && p.gamma.trim() !== '') {
+        gammas.add(p.gamma)
+      }
+    })
+    return Array.from(gammas).sort()
+  }, [products])
 
   const filteredProducts = useMemo(() => {
     return (products || []).filter(product => {
       const matchesSearch = 
         product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.barcode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        product.category.toLowerCase().includes(searchQuery.toLowerCase())
+        product.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (product.brand && product.brand.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (product.gamma && product.gamma.toLowerCase().includes(searchQuery.toLowerCase()))
       
       const matchesStatus = statusFilter === 'all' || product.statuses.some(s => s === statusFilter)
       const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter
       const matchesMainCategory = mainCategoryFilter === 'all' || product.mainCategory === mainCategoryFilter
+      const matchesGamma = gammaFilter === 'all' || product.gamma === gammaFilter
 
-      return matchesSearch && matchesStatus && matchesCategory && matchesMainCategory
+      return matchesSearch && matchesStatus && matchesCategory && matchesMainCategory && matchesGamma
     })
-  }, [products, searchQuery, statusFilter, categoryFilter, mainCategoryFilter])
+  }, [products, searchQuery, statusFilter, categoryFilter, mainCategoryFilter, gammaFilter])
 
   const handleExport = () => {
     if (filteredProducts.length === 0) {
@@ -91,7 +106,7 @@ export function ProductsPage({ products, onEditProduct, onDeleteProduct }: Produ
           />
         </div>
         
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           <div className="flex items-center gap-2">
             <FunnelSimple className="w-5 h-5 text-muted-foreground flex-shrink-0" />
             <Select value={mainCategoryFilter} onValueChange={setMainCategoryFilter}>
@@ -128,6 +143,18 @@ export function ProductsPage({ products, onEditProduct, onDeleteProduct }: Produ
               <SelectItem value="all">Wszystkie kategorie</SelectItem>
               {PRODUCT_CATEGORIES.map(cat => (
                 <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Select value={gammaFilter} onValueChange={setGammaFilter}>
+            <SelectTrigger className="h-11">
+              <SelectValue placeholder="Filtruj gammę" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Wszystkie gammy</SelectItem>
+              {uniqueGammas.map(gamma => (
+                <SelectItem key={gamma} value={gamma}>{gamma}</SelectItem>
               ))}
             </SelectContent>
           </Select>
