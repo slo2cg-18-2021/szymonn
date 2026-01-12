@@ -3,16 +3,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Product, MAIN_CATEGORY_LABELS, STATUS_LABELS } from '@/lib/types'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Product, MAIN_CATEGORY_LABELS, STATUS_LABELS, ProductStatus, calculateSalePrice } from '@/lib/types'
 import { Card, CardContent } from '@/components/ui/card'
-import { Package, Plus, Tag, Barcode } from '@phosphor-icons/react'
+import { Package, Plus, Tag, Barcode, CurrencyCircleDollar } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
+import { Separator } from '@/components/ui/separator'
 
 interface DeliveryDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   product: Product
-  onAddQuantity: (product: Product, additionalQuantity: number) => void
+  onAddQuantity: (product: Product, additionalQuantity: number, newStatus: ProductStatus, newPrice?: number) => void
 }
 
 export function DeliveryDialog({ 
@@ -22,20 +25,37 @@ export function DeliveryDialog({
   onAddQuantity 
 }: DeliveryDialogProps) {
   const [quantity, setQuantity] = useState('1')
+  const [selectedStatus, setSelectedStatus] = useState<ProductStatus>('available')
+  const [updatePrice, setUpdatePrice] = useState(false)
+  const [newPriceGross, setNewPriceGross] = useState('')
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const qty = parseInt(quantity) || 1
     if (qty > 0) {
-      onAddQuantity(product, qty)
+      const priceToUse = updatePrice && newPriceGross ? parseFloat(newPriceGross) : undefined
+      onAddQuantity(product, qty, selectedStatus, priceToUse)
+      // Reset form
       setQuantity('1')
+      setSelectedStatus('available')
+      setUpdatePrice(false)
+      setNewPriceGross('')
       onOpenChange(false)
     }
   }
 
-  const availableCount = product.statuses.filter(s => s === 'available').length
-  const inUseCount = product.statuses.filter(s => s === 'in-use').length
-  const soldCount = product.statuses.filter(s => s === 'sold' || s === 'sold-discount').length
+  // Normalizuj statusy
+  let statuses = product.statuses || []
+  if (typeof statuses === 'string') {
+    try { statuses = JSON.parse(statuses as any) } catch { statuses = [] }
+  }
+  if (!Array.isArray(statuses)) statuses = []
+
+  const availableCount = statuses.filter(s => s === 'available').length
+  const inUseCount = statuses.filter(s => s === 'in-use').length
+  const soldCount = statuses.filter(s => s === 'sold' || s === 'sold-discount').length
+
+  const currentPrice = product.priceGross || product.price || 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -76,7 +96,7 @@ export function DeliveryDialog({
                 </div>
                 <div>
                   <span className="text-muted-foreground">Cena brutto:</span>
-                  <span className="ml-2 font-medium">{product.priceGross?.toFixed(2) || product.price?.toFixed(2)} zł</span>
+                  <span className="ml-2 font-medium">{currentPrice.toFixed(2)} zł</span>
                 </div>
               </div>
 
@@ -114,10 +134,81 @@ export function DeliveryDialog({
               />
             </div>
 
+            {/* Status dla nowych sztuk */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Tag className="w-4 h-4" />
+                Status nowych sztuk
+              </Label>
+              <Select
+                value={selectedStatus}
+                onValueChange={(value: ProductStatus) => setSelectedStatus(value)}
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.entries(STATUS_LABELS) as [ProductStatus, string][])
+                    .filter(([value]) => value !== 'sold-discount') // Bez "sprzedany z rabatem" przy dostawie
+                    .map(([value, label]) => (
+                      <SelectItem key={value} value={value}>{label}</SelectItem>
+                    ))
+                  }
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Separator />
+
+            {/* Opcja aktualizacji ceny */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="updatePrice" className="flex items-center gap-2 cursor-pointer">
+                  <CurrencyCircleDollar className="w-4 h-4" />
+                  Zaktualizuj cenę dla nowych sztuk
+                </Label>
+                <Switch
+                  id="updatePrice"
+                  checked={updatePrice}
+                  onCheckedChange={setUpdatePrice}
+                />
+              </div>
+              
+              {updatePrice && (
+                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg space-y-3">
+                  <p className="text-sm text-yellow-700">
+                    <strong>Uwaga:</strong> Stare sztuki zachowają cenę {currentPrice.toFixed(2)} zł. 
+                    Tylko nowe sztuki będą miały nową cenę.
+                  </p>
+                  <div className="grid gap-2">
+                    <Label htmlFor="newPrice">Nowa cena brutto (zł)</Label>
+                    <Input
+                      id="newPrice"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={newPriceGross}
+                      onChange={(e) => setNewPriceGross(e.target.value)}
+                      placeholder={currentPrice.toFixed(2)}
+                      className="h-11"
+                    />
+                  </div>
+                  {newPriceGross && (
+                    <p className="text-sm text-yellow-700">
+                      Nowa cena sprzedaży: <strong>{calculateSalePrice(parseFloat(newPriceGross) || 0).toFixed(2)} zł</strong>
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="p-3 bg-muted/50 rounded-lg text-sm text-muted-foreground">
               <p>Po dodaniu dostawy:</p>
               <p className="font-medium text-foreground mt-1">
                 Łączna ilość: {product.quantity} + {parseInt(quantity) || 0} = <span className="text-primary">{product.quantity + (parseInt(quantity) || 0)} szt.</span>
+              </p>
+              <p className="font-medium text-foreground">
+                Status nowych: <span className="text-primary">{STATUS_LABELS[selectedStatus]}</span>
               </p>
             </div>
 

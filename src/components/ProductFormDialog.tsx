@@ -12,6 +12,8 @@ import {
   MainCategory, 
   VatRate,
   VAT_RATES,
+  ProductStatus,
+  STATUS_LABELS,
   calculateSalePrice,
   calculateGrossPrice,
   calculateNetPrice,
@@ -48,7 +50,8 @@ export function ProductFormDialog({
     priceMode: 'gross' as 'net' | 'gross', // czy użytkownik wpisuje netto czy brutto
     quantity: '1',
     purchaseDate: new Date().toISOString().split('T')[0],
-    notes: ''
+    notes: '',
+    initialStatus: 'available' as ProductStatus // status dla nowych sztuk
   })
 
   // Dostępne kategorie na podstawie typu produktu
@@ -75,7 +78,8 @@ export function ProductFormDialog({
           priceMode: 'gross',
           quantity: existingProduct.quantity.toString(),
           purchaseDate: existingProduct.purchaseDate,
-          notes: existingProduct.notes || ''
+          notes: existingProduct.notes || '',
+          initialStatus: 'available'
         })
       } else {
         setFormData({
@@ -90,7 +94,8 @@ export function ProductFormDialog({
           priceMode: 'gross',
           quantity: '1',
           purchaseDate: new Date().toISOString().split('T')[0],
-          notes: ''
+          notes: '',
+          initialStatus: 'available'
         })
       }
     }
@@ -162,7 +167,7 @@ export function ProductFormDialog({
       salePrice: calculateSalePrice(priceGross),
       quantity: parseInt(formData.quantity) || 1,
       purchaseDate: formData.purchaseDate,
-      statuses: [],
+      statuses: Array(parseInt(formData.quantity) || 1).fill(formData.initialStatus),
       discounts: [],
       notes: formData.notes
     })
@@ -369,15 +374,36 @@ export function ProductFormDialog({
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="purchaseDate">Data Zakupu</Label>
-                <Input
-                  id="purchaseDate"
-                  type="date"
-                  value={formData.purchaseDate}
-                  onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
-                  className="h-11"
-                />
+                <Label htmlFor="initialStatus">Status początkowy</Label>
+                <Select
+                  value={formData.initialStatus}
+                  onValueChange={(value: ProductStatus) => setFormData({ ...formData, initialStatus: value })}
+                >
+                  <SelectTrigger id="initialStatus" className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.entries(STATUS_LABELS) as [ProductStatus, string][])
+                      .filter(([value]) => value !== 'sold-discount')
+                      .map(([value, label]) => (
+                        <SelectItem key={value} value={value}>{label}</SelectItem>
+                      ))
+                    }
+                  </SelectContent>
+                </Select>
               </div>
+            </div>
+
+            {/* Data zakupu */}
+            <div className="grid gap-2">
+              <Label htmlFor="purchaseDate">Data Zakupu</Label>
+              <Input
+                id="purchaseDate"
+                type="date"
+                value={formData.purchaseDate}
+                onChange={(e) => setFormData({ ...formData, purchaseDate: e.target.value })}
+                className="h-11"
+              />
             </div>
 
             {/* Notatki */}

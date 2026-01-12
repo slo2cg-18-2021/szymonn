@@ -151,15 +151,35 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
     setTimeout(() => setScanLock(false), 1000)
   }
 
-  const handleAddDelivery = (product: Product, additionalQuantity: number) => {
-    const newStatuses = [...product.statuses, ...Array(additionalQuantity).fill('available')]
+  const handleAddDelivery = (product: Product, additionalQuantity: number, newStatus: ProductStatus = 'available', newPrice?: number) => {
+    // Normalizuj istniejące statusy
+    let existingStatuses = product.statuses || []
+    if (typeof existingStatuses === 'string') {
+      try { existingStatuses = JSON.parse(existingStatuses as any) } catch { existingStatuses = [] }
+    }
+    if (!Array.isArray(existingStatuses)) existingStatuses = []
+    
+    const newStatuses = [...existingStatuses, ...Array(additionalQuantity).fill(newStatus)]
     const newDiscounts = [...(product.discounts || []), ...Array(additionalQuantity).fill(0)]
+    
+    // Jeśli podano nową cenę, użyj jej dla nowych sztuk
+    // Stare sztuki zachowują starą cenę (nie zmieniamy price/priceGross produktu)
+    // Ale zapisujemy nową cenę jako aktualną cenę produktu
+    const currentPrice = product.priceGross || product.price || 0
+    const priceToUse = newPrice !== undefined ? newPrice : currentPrice
     
     const updatedProduct: Product = {
       ...product,
       quantity: product.quantity + additionalQuantity,
       statuses: newStatuses,
       discounts: newDiscounts,
+      // Jeśli podano nową cenę, zaktualizuj cenę produktu
+      ...(newPrice !== undefined && {
+        priceGross: newPrice,
+        price: newPrice,
+        priceNet: newPrice / 1.23,
+        salePrice: calculateSalePrice(newPrice)
+      }),
       updatedAt: new Date().toISOString()
     }
     
@@ -167,9 +187,13 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
       (current || []).map(p => p.id === product.id ? updatedProduct : p)
     )
     queueUpdateProduct(updatedProduct)
-    toast.success(`Dodano ${additionalQuantity} szt. do stanu`, {
-      description: `Nowy stan: ${updatedProduct.quantity} szt.`
-    })
+    
+    let description = `Nowy stan: ${updatedProduct.quantity} szt.`
+    if (newPrice !== undefined) {
+      description += ` | Nowa cena: ${newPrice.toFixed(2)} zł`
+    }
+    toast.success(`Dodano ${additionalQuantity} szt. do stanu`, { description })
+    
     setDeliveryDialogOpen(false)
     setDeliveryProduct(undefined)
   }
