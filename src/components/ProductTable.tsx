@@ -2,7 +2,10 @@ import { Product } from '@/lib/types'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Pencil, Trash } from '@phosphor-icons/react'
+import { Pencil, Trash, CaretUp, CaretDown, CaretUpDown } from '@phosphor-icons/react'
+
+export type SortField = 'barcode' | 'name' | 'brand' | 'category' | 'gamma' | 'price' | 'quantity' | 'available' | 'inUse' | 'purchaseDate'
+export type SortDirection = 'asc' | 'desc'
 
 interface ProductTableProps {
   products: Product[]
@@ -12,6 +15,9 @@ interface ProductTableProps {
   onSelectProduct?: (id: string, checked: boolean) => void
   onSelectAll?: (checked: boolean) => void
   selectionMode?: boolean
+  sortField?: SortField
+  sortDirection?: SortDirection
+  onSort?: (field: SortField) => void
 }
 
 export function ProductTable({ 
@@ -21,10 +27,29 @@ export function ProductTable({
   selectedIds = new Set(),
   onSelectProduct,
   onSelectAll,
-  selectionMode = false
+  selectionMode = false,
+  sortField,
+  sortDirection = 'asc',
+  onSort
 }: ProductTableProps) {
   const allSelected = products.length > 0 && products.every(p => selectedIds.has(p.id))
   const someSelected = products.some(p => selectedIds.has(p.id))
+
+  const SortableHeader = ({ field, children }: { field: SortField, children: React.ReactNode }) => (
+    <TableHead 
+      className="font-semibold cursor-pointer hover:bg-muted/70 select-none"
+      onClick={() => onSort?.(field)}
+    >
+      <div className="flex items-center gap-1">
+        {children}
+        {sortField === field ? (
+          sortDirection === 'asc' ? <CaretUp className="w-4 h-4" /> : <CaretDown className="w-4 h-4" />
+        ) : (
+          <CaretUpDown className="w-4 h-4 opacity-30" />
+        )}
+      </div>
+    </TableHead>
+  )
 
   if (products.length === 0) {
     return (
@@ -51,16 +76,16 @@ export function ProductTable({
                   />
                 </TableHead>
               )}
-              <TableHead className="font-semibold">Kod</TableHead>
-              <TableHead className="font-semibold">Nazwa</TableHead>
-              <TableHead className="font-semibold">Marka</TableHead>
-              <TableHead className="font-semibold">Kategoria</TableHead>
-              <TableHead className="font-semibold">Gamma</TableHead>
-              <TableHead className="font-semibold">Cena</TableHead>
-              <TableHead className="font-semibold">Ilość</TableHead>
-              <TableHead className="font-semibold">Dostępne</TableHead>
-              <TableHead className="font-semibold">W Użyciu</TableHead>
-              <TableHead className="font-semibold">Data Zakupu</TableHead>
+              <SortableHeader field="barcode">Kod</SortableHeader>
+              <SortableHeader field="name">Nazwa</SortableHeader>
+              <SortableHeader field="brand">Marka</SortableHeader>
+              <SortableHeader field="category">Kategoria</SortableHeader>
+              <SortableHeader field="gamma">Gamma</SortableHeader>
+              <SortableHeader field="price">Cena</SortableHeader>
+              <SortableHeader field="quantity">Ilość</SortableHeader>
+              <SortableHeader field="available">Dostępne</SortableHeader>
+              <SortableHeader field="inUse">W Użyciu</SortableHeader>
+              <SortableHeader field="purchaseDate">Data Zakupu</SortableHeader>
               <TableHead className="font-semibold text-right">Akcje</TableHead>
             </TableRow>
           </TableHeader>

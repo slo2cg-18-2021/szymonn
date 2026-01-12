@@ -1,11 +1,11 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Product, ProductStatus, PRODUCT_CATEGORIES, MainCategory } from '@/lib/types'
-import { ProductTable } from '@/components/ProductTable'
+import { ProductTable, SortField, SortDirection } from '@/components/ProductTable'
 import { ProductCard } from '@/components/ProductCard'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { MagnifyingGlass, FunnelSimple, Download, Trash, CheckSquare, X, PencilSimple, Tag, ListChecks } from '@phosphor-icons/react'
+import { MagnifyingGlass, FunnelSimple, Download, Trash, CheckSquare, X, PencilSimple, Tag, ListChecks, CaretLeft, CaretRight } from '@phosphor-icons/react'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { exportToCSV } from '@/lib/csv'
 import { toast } from 'sonner'
@@ -53,6 +53,14 @@ export function ProductsPage({ products, onEditProduct, onDeleteProduct, onBulkU
   const [bulkEditDialogOpen, setBulkEditDialogOpen] = useState(false)
   const [bulkEditType, setBulkEditType] = useState<'category' | 'mainCategory' | 'brand' | 'gamma' | null>(null)
   const [bulkEditValue, setBulkEditValue] = useState('')
+  
+  // Paginacja
+  const [currentPage, setCurrentPage] = useState(1)
+  const ITEMS_PER_PAGE = 50
+
+  // Sortowanie
+  const [sortField, setSortField] = useState<SortField | undefined>(undefined)
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
 
   // Pobierz unikalne gammy z produktów
   const uniqueGammas = useMemo(() => {
@@ -95,13 +103,102 @@ export function ProductsPage({ products, onEditProduct, onDeleteProduct, onBulkU
     })
   }, [products, searchQuery, statusFilter, categoryFilter, mainCategoryFilter, gammaFilter, brandFilter])
 
+  // Sortowanie
+  const sortedProducts = useMemo(() => {
+    if (!sortField) return filteredProducts
+    
+    return [...filteredProducts].sort((a, b) => {
+      let aVal: any
+      let bVal: any
+      
+      // Normalizuj statusy dla obliczeń available/inUse
+      const getStatuses = (p: Product) => {
+        let statuses = p.statuses || []
+        if (typeof statuses === 'string') {
+          try { statuses = JSON.parse(statuses as any) } catch { statuses = [] }
+        }
+        if (!Array.isArray(statuses)) statuses = []
+        return statuses
+      }
+      
+      switch (sortField) {
+        case 'barcode':
+          aVal = a.barcode?.toLowerCase() || ''
+          bVal = b.barcode?.toLowerCase() || ''
+          break
+        case 'name':
+          aVal = a.name?.toLowerCase() || ''
+          bVal = b.name?.toLowerCase() || ''
+          break
+        case 'brand':
+          aVal = a.brand?.toLowerCase() || ''
+          bVal = b.brand?.toLowerCase() || ''
+          break
+        case 'category':
+          aVal = a.category?.toLowerCase() || ''
+          bVal = b.category?.toLowerCase() || ''
+          break
+        case 'gamma':
+          aVal = a.gamma?.toLowerCase() || ''
+          bVal = b.gamma?.toLowerCase() || ''
+          break
+        case 'price':
+          aVal = Number(a.priceGross) || Number(a.price) || 0
+          bVal = Number(b.priceGross) || Number(b.price) || 0
+          break
+        case 'quantity':
+          aVal = a.quantity || 0
+          bVal = b.quantity || 0
+          break
+        case 'available':
+          aVal = getStatuses(a).filter(s => s === 'available').length
+          bVal = getStatuses(b).filter(s => s === 'available').length
+          break
+        case 'inUse':
+          aVal = getStatuses(a).filter(s => s === 'in-use').length
+          bVal = getStatuses(b).filter(s => s === 'in-use').length
+          break
+        case 'purchaseDate':
+          aVal = new Date(a.purchaseDate || 0).getTime()
+          bVal = new Date(b.purchaseDate || 0).getTime()
+          break
+        default:
+          return 0
+      }
+      
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+  }, [filteredProducts, sortField, sortDirection])
+
+  // Paginacja - obliczenia
+  const totalPages = Math.ceil(sortedProducts.length / ITEMS_PER_PAGE)
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE
+  const endIndex = startIndex + ITEMS_PER_PAGE
+  const paginatedProducts = sortedProducts.slice(startIndex, endIndex)
+
+  // Reset strony przy zmianie filtrów
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery, statusFilter, categoryFilter, mainCategoryFilter, gammaFilter, brandFilter])
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
+
   const handleExport = () => {
-    if (filteredProducts.length === 0) {
+    if (sortedProducts.length === 0) {
       toast.error('Brak produktów do eksportu')
       return
     }
-    exportToCSV(filteredProducts)
-    toast.success(`Wyeksportowano ${filteredProducts.length} produktów`)
+    exportToCSV(sortedProducts)
+    toast.success(`Wyeksportowano ${sortedProducts.length} produktów`)
   }
 
   // Funkcje zaznaczania
@@ -117,7 +214,7 @@ export function ProductsPage({ products, onEditProduct, onDeleteProduct, onBulkU
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(new Set(filteredProducts.map(p => p.id)))
+      setSelectedIds(new Set(sortedProducts.map(p => p.id)))
     } else {
       setSelectedIds(new Set())
     }
@@ -199,7 +296,7 @@ export function ProductsPage({ products, onEditProduct, onDeleteProduct, onBulkU
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold">Spis Produktów</h1>
           <p className="text-muted-foreground mt-1">
-            Przeglądaj i zarządzaj wszystkimi produktami ({filteredProducts.length} z {products.length})
+            Przeglądaj i zarządzaj wszystkimi produktami ({sortedProducts.length} z {products.length})
           </p>
         </div>
         <div className="flex gap-2">
@@ -363,22 +460,22 @@ export function ProductsPage({ products, onEditProduct, onDeleteProduct, onBulkU
       <div>
         {isMobile ? (
           <div className="space-y-3">
-            {selectionMode && filteredProducts.length > 0 && (
+            {selectionMode && paginatedProducts.length > 0 && (
               <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg">
                 <Checkbox
-                  checked={filteredProducts.every(p => selectedIds.has(p.id))}
+                  checked={paginatedProducts.every(p => selectedIds.has(p.id))}
                   onCheckedChange={handleSelectAll}
                 />
-                <span className="text-sm font-medium">Zaznacz wszystkie ({filteredProducts.length})</span>
+                <span className="text-sm font-medium">Zaznacz wszystkie na stronie ({paginatedProducts.length})</span>
               </div>
             )}
-            {filteredProducts.length === 0 ? (
+            {paginatedProducts.length === 0 ? (
               <div className="text-center py-12 border border-border rounded-lg bg-card">
                 <p className="text-lg text-muted-foreground">Brak produktów</p>
                 <p className="text-sm text-muted-foreground mt-2">Zmień filtry lub dodaj nowe produkty</p>
               </div>
             ) : (
-              filteredProducts.map(product => (
+              paginatedProducts.map(product => (
                 <div key={product.id} className="flex items-start gap-3">
                   {selectionMode && (
                     <Checkbox
@@ -400,16 +497,88 @@ export function ProductsPage({ products, onEditProduct, onDeleteProduct, onBulkU
           </div>
         ) : (
           <ProductTable
-            products={filteredProducts}
+            products={paginatedProducts}
             onEdit={onEditProduct}
             onDelete={onDeleteProduct}
             selectionMode={selectionMode}
             selectedIds={selectedIds}
             onSelectProduct={handleSelectProduct}
-            onSelectAll={handleSelectAll}
+            onSelectAll={(checked) => {
+              if (checked) {
+                setSelectedIds(new Set([...selectedIds, ...paginatedProducts.map(p => p.id)]))
+              } else {
+                const newSelected = new Set(selectedIds)
+                paginatedProducts.forEach(p => newSelected.delete(p.id))
+                setSelectedIds(newSelected)
+              }
+            }}
+            sortField={sortField}
+            sortDirection={sortDirection}
+            onSort={handleSort}
           />
         )}
       </div>
+
+      {/* Paginacja */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-4 py-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="gap-1"
+          >
+            <CaretLeft className="w-4 h-4" />
+            Poprzednia
+          </Button>
+          
+          <div className="flex items-center gap-2">
+            {/* Pokaż numery stron */}
+            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+              let pageNum: number
+              if (totalPages <= 5) {
+                pageNum = i + 1
+              } else if (currentPage <= 3) {
+                pageNum = i + 1
+              } else if (currentPage >= totalPages - 2) {
+                pageNum = totalPages - 4 + i
+              } else {
+                pageNum = currentPage - 2 + i
+              }
+              return (
+                <Button
+                  key={pageNum}
+                  variant={currentPage === pageNum ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setCurrentPage(pageNum)}
+                  className="w-10"
+                >
+                  {pageNum}
+                </Button>
+              )
+            })}
+          </div>
+          
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="gap-1"
+          >
+            Następna
+            <CaretRight className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
+
+      {/* Info o paginacji */}
+      {sortedProducts.length > 0 && (
+        <div className="text-center text-sm text-muted-foreground">
+          Wyświetlanie {startIndex + 1}-{Math.min(endIndex, sortedProducts.length)} z {sortedProducts.length} produktów
+        </div>
+      )}
 
       {/* Dialog edycji zbiorczej */}
       <Dialog open={bulkEditDialogOpen} onOpenChange={setBulkEditDialogOpen}>
