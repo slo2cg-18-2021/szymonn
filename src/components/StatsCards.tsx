@@ -7,18 +7,30 @@ interface StatsCardsProps {
 }
 
 export function StatsCards({ products }: StatsCardsProps) {
-  const uniqueProducts = products.length
-  const totalQuantity = products.reduce((sum, p) => sum + (p.quantity || 0), 0)
-  const availableCount = products.reduce((sum, p) => sum + (p.statuses || []).filter(s => s === 'available').length, 0)
-  const inUseCount = products.reduce((sum, p) => sum + (p.statuses || []).filter(s => s === 'in-use').length, 0)
-  const usedCount = products.reduce((sum, p) => sum + (p.statuses || []).filter(s => s === 'used').length, 0)
-  const soldCount = products.reduce((sum, p) => sum + (p.statuses || []).filter(s => s === 'sold' || s === 'sold-discount').length, 0)
+  // Helper do normalizacji statusów (mogą przyjść jako JSON string z bazy)
+  const getStatuses = (p: Product): string[] => {
+    let statuses = p.statuses
+    if (typeof statuses === 'string') {
+      try { statuses = JSON.parse(statuses) } catch { statuses = [] }
+    }
+    if (!Array.isArray(statuses) || statuses.length === 0) {
+      // Jeśli brak statusów ale jest quantity, traktuj jako available
+      return p.quantity > 0 ? Array(p.quantity).fill('available') : []
+    }
+    return statuses
+  }
+
+  const totalProducts = products.length
+  const availableCount = products.reduce((sum, p) => sum + getStatuses(p).filter(s => s === 'available').length, 0)
+  const inUseCount = products.reduce((sum, p) => sum + getStatuses(p).filter(s => s === 'in-use').length, 0)
+  const usedCount = products.reduce((sum, p) => sum + getStatuses(p).filter(s => s === 'used').length, 0)
+  const soldCount = products.reduce((sum, p) => sum + getStatuses(p).filter(s => s === 'sold' || s === 'sold-discount').length, 0)
   
-  // Wartość magazynu (dostępne + w użyciu) w cenach zakupu brutto
+  // Wartość magazynu (dostępne + w użyciu) w cenach zakupu
   const totalValue = products
     .reduce((sum, p) => {
       const price = Number(p.priceGross) || Number(p.price) || 0
-      const activeCount = (p.statuses || []).filter(s => s === 'available' || s === 'in-use').length
+      const activeCount = getStatuses(p).filter(s => s === 'available' || s === 'in-use').length
       return sum + (price * activeCount)
     }, 0)
   
@@ -28,7 +40,7 @@ export function StatsCards({ products }: StatsCardsProps) {
     const salePrice = p.salePrice || calculateSalePrice(basePrice)
     let productSoldValue = 0
     
-    ;(p.statuses || []).forEach((status, index) => {
+    getStatuses(p).forEach((status, index) => {
       if (status === 'sold') {
         productSoldValue += salePrice
       } else if (status === 'sold-discount') {
@@ -42,9 +54,8 @@ export function StatsCards({ products }: StatsCardsProps) {
 
   const stats = [
     {
-      title: 'Stan Magazynu',
-      value: totalQuantity,
-      subtitle: `${uniqueProducts} produktów`,
+      title: 'Produkty',
+      value: totalProducts,
       icon: Package,
       color: 'text-primary'
     },
@@ -86,9 +97,6 @@ export function StatsCards({ products }: StatsCardsProps) {
           </CardHeader>
           <CardContent>
             <div className="text-2xl sm:text-3xl font-bold">{stat.value}</div>
-            {'subtitle' in stat && stat.subtitle && (
-              <p className="text-xs text-muted-foreground mt-1">{stat.subtitle}</p>
-            )}
           </CardContent>
         </Card>
       ))}

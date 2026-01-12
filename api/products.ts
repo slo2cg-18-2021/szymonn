@@ -33,21 +33,44 @@ export default async function handler(req: any, res: any) {
     if (req.method === 'GET') {
       const products = await withClient(async (client) => {
         const r = await client.query('SELECT * FROM products')
-        return r.rows.map((row: any) => ({
-          id: row.id,
-          barcode: row.barcode,
-          name: row.name,
-          mainCategory: row.maincategory || 'resale',
-          category: row.category,
-          price: parseFloat(row.price) || 0,
-          salePrice: parseFloat(row.saleprice) || (parseFloat(row.price) || 0) * 1.8,
-          quantity: parseInt(row.quantity) || 1,
-          purchaseDate: row.purchasedate,
-          statuses: row.statuses || [],
-          discounts: row.discounts || [],
-          notes: row.notes,
-          updatedAt: row.updatedat
-        }))
+        return r.rows.map((row: any) => {
+          const price = parseFloat(row.pricegross) || parseFloat(row.price) || 0
+          const quantity = parseInt(row.quantity) || 1
+          
+          // Parse statuses - JSONB z Postgres może być już obiektem lub stringiem
+          let statuses = row.statuses
+          if (typeof statuses === 'string') {
+            try { statuses = JSON.parse(statuses) } catch { statuses = [] }
+          }
+          if (!Array.isArray(statuses)) statuses = []
+          
+          // Parse discounts
+          let discounts = row.discounts
+          if (typeof discounts === 'string') {
+            try { discounts = JSON.parse(discounts) } catch { discounts = [] }
+          }
+          if (!Array.isArray(discounts)) discounts = []
+          
+          return {
+            id: row.id,
+            barcode: row.barcode,
+            name: row.name,
+            brand: row.brand || '',
+            mainCategory: row.maincategory || 'resale',
+            category: row.category,
+            price: price,
+            priceNet: parseFloat(row.pricenet) || (price / 1.23),
+            priceGross: price,
+            vatRate: parseInt(row.vatrate) || 23,
+            salePrice: parseFloat(row.saleprice) || price * 1.8,
+            quantity: quantity,
+            purchaseDate: row.purchasedate,
+            statuses: statuses,
+            discounts: discounts,
+            notes: row.notes,
+            updatedAt: row.updatedat
+          }
+        })
       })
 
       res.status(200).json({ products })
