@@ -195,7 +195,7 @@ export function DeliveryDialog({
                   </div>
                   {newPriceGross && (
                     <p className="text-sm text-yellow-700">
-                      Nowa cena sprzedaży (marża 80% od netto + VAT): <strong>{calculateSalePrice(calculateNetPrice(parseFloat(newPriceGross) || 0, (product.vatRate || 23) as VatRate), (product.vatRate || 23) as VatRate).toFixed(2)} zł</strong>
+                      Nowa cena sprzedaży (marża 80% od netto): <strong>{calculateSalePrice(calculateNetPrice(parseFloat(newPriceGross) || 0, (product.vatRate || 23) as VatRate), (product.vatRate || 23) as VatRate).toFixed(2)} zł</strong>
                     </p>
                   )}
                 </div>

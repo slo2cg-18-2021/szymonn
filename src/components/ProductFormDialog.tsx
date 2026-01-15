@@ -376,7 +376,7 @@ export function ProductFormDialog({
 
                 {formData.priceNet && (
                   <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
-                    <span className="text-green-700">Cena sprzedaży (marża 80% od netto + VAT): </span>
+                    <span className="text-green-700">Cena sprzedaży (marża 80% od netto): </span>
                     <span className="font-bold text-green-800">
                       {calculateSalePrice(parseFloat(formData.priceNet) || 0, formData.vatRate).toFixed(2)} zł
                     </span>
