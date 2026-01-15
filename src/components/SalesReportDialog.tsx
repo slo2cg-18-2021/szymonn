@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Product, calculateSalePrice, calculateDiscountedPrice } from '@/lib/types'
+import { Product, calculateSalePrice, calculateDiscountedPrice, calculateNetPrice, VatRate } from '@/lib/types'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -72,8 +72,8 @@ export function SalesReportDialog({ products }: SalesReportDialogProps) {
       }
       
       // Sprzedaż - na podstawie updatedAt dla statusów 'sold' i 'sold-discount'
-      const priceNet = Number(product.priceNet) || (Number(product.price) / 1.23)
-      const vatRate = product.vatRate || 23
+      const vatRate = (product.vatRate || 23) as VatRate
+      const priceNet = Number(product.priceNet) || calculateNetPrice(Number(product.price), vatRate)
       const salePrice = product.salePrice || calculateSalePrice(priceNet, vatRate)
       
       ;(product.statuses || []).forEach((status, index) => {

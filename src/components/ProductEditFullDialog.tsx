@@ -146,10 +146,12 @@ export function ProductEditFullDialog({
   const handleVatChange = (newVat: VatRate) => {
     const grossPrice = parseFloat(formData.priceGross) || 0
     const netPrice = calculateNetPrice(grossPrice, newVat)
+    const salePrice = calculateSalePrice(netPrice, newVat)
     setFormData(prev => ({
       ...prev,
       vatRate: newVat,
-      priceNet: grossPrice > 0 ? netPrice.toFixed(2) : ''
+      priceNet: grossPrice > 0 ? netPrice.toFixed(2) : '',
+      salePrice: grossPrice > 0 ? salePrice.toFixed(2) : ''
     }))
   }
 

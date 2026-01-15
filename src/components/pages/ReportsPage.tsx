@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Product, calculateSalePrice, calculateDiscountedPrice } from '@/lib/types'
+import { Product, calculateSalePrice, calculateDiscountedPrice, calculateNetPrice, VatRate } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
@@ -80,8 +80,8 @@ export function ReportsPage({ products }: ReportsPageProps) {
       }
       
       // Sprzedaż
-      const priceNet = Number(product.priceNet) || (Number(product.price) / 1.23)
-      const vatRate = product.vatRate || 23
+      const vatRate = (product.vatRate || 23) as VatRate
+      const priceNet = Number(product.priceNet) || calculateNetPrice(Number(product.price), vatRate)
       const salePrice = product.salePrice || calculateSalePrice(priceNet, vatRate)
       
       ;(product.statuses || []).forEach((status, index) => {

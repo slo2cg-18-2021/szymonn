@@ -1,4 +1,4 @@
-import { Product, calculateSalePrice, calculateDiscountedPrice } from '@/lib/types'
+import { Product, calculateSalePrice, calculateDiscountedPrice, calculateNetPrice, VatRate } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckCircle, Clock, ShoppingCart, Package, Recycle } from '@phosphor-icons/react'
 
@@ -35,8 +35,8 @@ export function StatsCards({ products }: StatsCardsProps) {
   
   // Wartość sprzedaży (z marżą 80%, uwzględniając rabaty)
   const soldValue = products.reduce((sum, p) => {
-    const priceNet = Number(p.priceNet) || (Number(p.price) / 1.23)
-    const vatRate = p.vatRate || 23
+    const vatRate = (p.vatRate || 23) as VatRate
+    const priceNet = Number(p.priceNet) || calculateNetPrice(Number(p.price), vatRate)
     const salePrice = p.salePrice || calculateSalePrice(priceNet, vatRate)
     let productSoldValue = 0
     

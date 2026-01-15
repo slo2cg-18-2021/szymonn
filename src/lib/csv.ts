@@ -1,4 +1,4 @@
-import { Product, ProductStatus, MainCategory, VatRate } from './types'
+import { Product, ProductStatus, MainCategory, VatRate, calculateNetPrice, calculateSalePrice } from './types'
 
 export function exportToCSV(products: Product[], filename: string = 'salon-inventory.csv') {
   const headers = [
@@ -23,9 +23,9 @@ export function exportToCSV(products: Product[], filename: string = 'salon-inven
   
   const rows = products.map(product => {
     const priceGross = product.priceGross || product.price || 0
-    const priceNet = product.priceNet || (priceGross / 1.23)
-    const vatRate = product.vatRate || 23
-    const salePrice = product.salePrice || (priceNet * 1.8 * (1 + vatRate / 100))
+    const vatRate = (product.vatRate || 23) as VatRate
+    const priceNet = product.priceNet || calculateNetPrice(priceGross, vatRate)
+    const salePrice = product.salePrice || calculateSalePrice(priceNet, vatRate)
     
     return [
       product.barcode || '',
@@ -147,9 +147,9 @@ export function parseCSV(csvText: string): Partial<Product>[] {
 
     // Ceny
     const priceGross = getNumericValue(['cena brutto', 'cena', 'price', 'pricegross'], 0)
-    const priceNet = getNumericValue(['cena netto', 'pricenet'], priceGross / 1.23)
     const vatRate = getNumericValue(['vat %', 'vat', 'vatrate'], 23) as VatRate
-    const salePrice = getNumericValue(['cena sprzedaży', 'cena sprzedazy', 'saleprice'], priceNet * 1.8 * (1 + vatRate / 100))
+    const priceNet = getNumericValue(['cena netto', 'pricenet'], calculateNetPrice(priceGross, vatRate))
+    const salePrice = getNumericValue(['cena sprzedaży', 'cena sprzedazy', 'saleprice'], calculateSalePrice(priceNet, vatRate))
 
     const mainCategory = (getValue(['typ', 'maincategory', 'main category']) || 'resale') as MainCategory
 

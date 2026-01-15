@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Product, ProductStatus, calculateSalePrice } from '@/lib/types'
+import { Product, ProductStatus, calculateSalePrice, calculateNetPrice, VatRate } from '@/lib/types'
 import Login from '@/components/Login'
 import { AdminLayout, PageType } from '@/components/AdminLayout'
 import { AddProductsPage } from '@/components/pages/AddProductsPage'
@@ -244,8 +244,8 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
       ...(newPrice !== undefined && {
         priceGross: newPrice,
         price: newPrice,
-        priceNet: newPrice / 1.23,
-        salePrice: calculateSalePrice(newPrice / 1.23, product.vatRate || 23)
+        priceNet: calculateNetPrice(newPrice, (product.vatRate || 23) as VatRate),
+        salePrice: calculateSalePrice(calculateNetPrice(newPrice, (product.vatRate || 23) as VatRate), (product.vatRate || 23) as VatRate)
       }),
       updatedAt: new Date().toISOString()
     }

@@ -1,4 +1,4 @@
-import { Product } from '@/lib/types'
+import { Product, calculateNetPrice, calculateSalePrice, VatRate } from '@/lib/types'
 import { BarcodeScanner } from '@/components/BarcodeScanner'
 import { ProductFormDialog } from '@/components/ProductFormDialog'
 import { LowStockAlert } from '@/components/LowStockAlert'
@@ -71,9 +71,9 @@ export function AddProductsPage({
             ? p.discounts
             : Array(quantity).fill(0)
           const priceGross = p.priceGross || p.price || 0
-          const priceNet = p.priceNet || (priceGross / 1.23)
-          const vatRate = p.vatRate || 23
-          const salePrice = p.salePrice || (priceNet * 1.8 * (1 + vatRate / 100))
+          const vatRate = (p.vatRate || 23) as VatRate
+          const priceNet = p.priceNet || calculateNetPrice(priceGross, vatRate)
+          const salePrice = p.salePrice || calculateSalePrice(priceNet, vatRate)
           
           return {
             id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
