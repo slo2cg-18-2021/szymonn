@@ -25,13 +25,18 @@ export function StatsCards({ products }: StatsCardsProps) {
   const usedCount = products.reduce((sum, p) => sum + getStatuses(p).filter(s => s === 'used').length, 0)
   const soldCount = products.reduce((sum, p) => sum + getStatuses(p).filter(s => s === 'sold' || s === 'sold-discount').length, 0)
   
-  // Wartość magazynu - użyj salePrice/1.8 jako cenę zakupu jeśli price jest 0
-  const totalValue = products.reduce((sum, p) => {
+  // Wartość magazynu - oblicz wartości brutto i netto osobno
+  const { totalValueGross, totalValueNet } = products.reduce((acc, p) => {
     const salePrice = Number(p.salePrice) || 0
-    const price = Number(p.price) || Number(p.priceGross) || (salePrice > 0 ? salePrice / 1.8 : 0)
+    const priceGross = Number(p.price) || Number(p.priceGross) || (salePrice > 0 ? salePrice / 1.8 : 0)
+    const vatRate = (p.vatRate || 23) as VatRate
+    const priceNet = Number(p.priceNet) || calculateNetPrice(priceGross, vatRate)
     const activeCount = getStatuses(p).filter(s => s === 'available' || s === 'in-use').length
-    return sum + (price * activeCount)
-  }, 0)
+    return {
+      totalValueGross: acc.totalValueGross + (priceGross * activeCount),
+      totalValueNet: acc.totalValueNet + (priceNet * activeCount)
+    }
+  }, { totalValueGross: 0, totalValueNet: 0 })
   
   // Wartość sprzedaży (z marżą 80%, uwzględniając rabaty)
   const soldValue = products.reduce((sum, p) => {
@@ -104,12 +109,24 @@ export function StatsCards({ products }: StatsCardsProps) {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
-            Wartość Magazynu
+            Wartość Magazynu (Brutto)
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-xl sm:text-2xl font-bold">{totalValue.toFixed(2)} zł</div>
-          <p className="text-xs text-muted-foreground mt-1">Ceny zakupu</p>
+          <div className="text-xl sm:text-2xl font-bold">{totalValueGross.toFixed(2)} zł</div>
+          <p className="text-xs text-muted-foreground mt-1">Ceny zakupu brutto</p>
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">
+            Wartość Magazynu (Netto)
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-xl sm:text-2xl font-bold">{totalValueNet.toFixed(2)} zł</div>
+          <p className="text-xs text-muted-foreground mt-1">Ceny zakupu netto</p>
         </CardContent>
       </Card>
       
