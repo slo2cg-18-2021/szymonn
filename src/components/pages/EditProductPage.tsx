@@ -13,12 +13,20 @@ interface EditProductPageProps {
   products: Product[]
   onUpdateProduct: (product: Product) => void
   onDeleteProduct: (productId: string) => void
+  brands?: string[]
+  gammas?: string[]
+  onAddBrand?: (brand: string) => void
+  onAddGamma?: (gamma: string) => void
 }
 
 export function EditProductPage({ 
   products, 
   onUpdateProduct,
-  onDeleteProduct
+  onDeleteProduct,
+  brands = [],
+  gammas = [],
+  onAddBrand,
+  onAddGamma
 }: EditProductPageProps) {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<Product | undefined>()
@@ -173,6 +181,10 @@ export function EditProductPage({
         product={selectedProduct}
         onSave={handleSaveProduct}
         onDelete={handleDeleteProduct}
+        brands={brands}
+        gammas={gammas}
+        onAddBrand={onAddBrand}
+        onAddGamma={onAddGamma}
       />
     </motion.div>
   )

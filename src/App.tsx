@@ -407,6 +407,10 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
               products={products || []}
               onUpdateProduct={handleEditProduct}
               onDeleteProduct={handleDeleteProduct}
+              brands={brands}
+              gammas={gammas}
+              onAddBrand={handleAddBrand}
+              onAddGamma={handleAddGamma}
             />
           </>
         )
@@ -451,6 +455,10 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
               product={editingProduct}
               onSave={handleSaveEditedProduct}
               onDelete={handleDeleteProduct}
+              brands={brands}
+              gammas={gammas}
+              onAddBrand={handleAddBrand}
+              onAddGamma={handleAddGamma}
             />
           </>
         )
