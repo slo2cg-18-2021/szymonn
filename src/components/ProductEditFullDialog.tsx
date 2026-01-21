@@ -440,21 +440,32 @@ export function ProductEditFullDialog({
             <Separator />
 
             {/* Statusy poszczególnych sztuk */}
-            <Card className="bg-muted/30">
+            <Card className="bg-blue-50/50 border-blue-200">
               <CardContent className="pt-4 space-y-4">
-                <div className="text-sm font-medium">
-                  Statusy poszczególnych sztuk ({statuses.length} szt.)
+                <div className="flex items-center justify-between">
+                  <div className="text-sm font-semibold text-blue-800">
+                    🏷️ Zarządzanie statusami ({statuses.length} szt.)
+                  </div>
+                  <div className="text-xs text-blue-600">
+                    Zmień status każdej sztuki produktu
+                  </div>
                 </div>
                 
-                <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                <div className="space-y-2 max-h-[250px] overflow-y-auto pr-2">
                   {statuses.map((status, index) => (
-                    <div key={index} className="flex items-center gap-3 p-2 bg-background rounded border">
-                      <span className="text-sm font-medium w-16">Szt. {index + 1}</span>
+                    <div key={index} className={`flex items-center gap-3 p-3 rounded-lg border ${
+                      status === 'available' ? 'bg-green-50 border-green-200' :
+                      status === 'in-use' ? 'bg-yellow-50 border-yellow-200' :
+                      status === 'used' ? 'bg-gray-100 border-gray-300' :
+                      status === 'sold' ? 'bg-blue-50 border-blue-200' :
+                      'bg-purple-50 border-purple-200'
+                    }`}>
+                      <span className="text-sm font-medium w-20">Sztuka {index + 1}</span>
                       <Select
                         value={status}
                         onValueChange={(value: ProductStatus) => handleStatusChange(index, value)}
                       >
-                        <SelectTrigger className="flex-1 h-9">
+                        <SelectTrigger className="flex-1 h-10 bg-white">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -472,9 +483,9 @@ export function ProductEditFullDialog({
                             max="100"
                             value={discounts[index] || 0}
                             onChange={(e) => handleDiscountChange(index, e.target.value)}
-                            className="w-20 h-9"
+                            className="w-20 h-10 bg-white"
                           />
-                          <span className="text-sm">%</span>
+                          <span className="text-sm font-medium">%</span>
                         </div>
                       )}
                     </div>
