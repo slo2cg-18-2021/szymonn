@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Product, ProductStatus, PRODUCT_CATEGORIES, MainCategory } from '@/lib/types'
+import { Product, ProductStatus, PRODUCT_CATEGORIES, MainCategory, hasActiveUnits, normalizeStatuses } from '@/lib/types'
 import { ProductTable, SortField, SortDirection } from '@/components/ProductTable'
 import { ProductCard } from '@/components/ProductCard'
 import { Input } from '@/components/ui/input'
@@ -40,7 +40,7 @@ interface ProductsPageProps {
 
 export function ProductsPage({ products, onEditProduct, onDeleteProduct, onBulkUpdate }: ProductsPageProps) {
   const [searchQuery, setSearchQuery] = useState('')
-  const [statusFilter, setStatusFilter] = useState<ProductStatus | 'all'>('all')
+  const [statusFilter, setStatusFilter] = useState<ProductStatus | 'all' | 'active-only'>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [mainCategoryFilter, setMainCategoryFilter] = useState<string>('all')
   const [gammaFilter, setGammaFilter] = useState<string>('all')
@@ -86,6 +86,21 @@ export function ProductsPage({ products, onEditProduct, onDeleteProduct, onBulkU
 
   const filteredProducts = useMemo(() => {
     return (products || []).filter(product => {
+      // Przy filtrze "all" pokazujemy wszystkie produkty (w tym zużyte/sprzedane)
+      // Przy filtrze "active-only" pokazujemy tylko produkty z aktywnymi jednostkami
+      // Przy innych filtrach (np. "available") ukrywamy produkty bez aktywnych jednostek
+      // chyba że filtrujemy po nieaktywnym statusie (used, sold, sold-discount)
+      const showAllProducts = statusFilter === 'all'
+      const showOnlyActive = statusFilter === 'active-only'
+      const showInactiveProducts = statusFilter === 'used' || statusFilter === 'sold' || statusFilter === 'sold-discount'
+      
+      if (showOnlyActive && !hasActiveUnits(product)) {
+        return false
+      }
+      if (!showAllProducts && !showOnlyActive && !showInactiveProducts && !hasActiveUnits(product)) {
+        return false
+      }
+      
       const matchesSearch = 
         product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         product.barcode.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -93,7 +108,8 @@ export function ProductsPage({ products, onEditProduct, onDeleteProduct, onBulkU
         (product.brand && product.brand.toLowerCase().includes(searchQuery.toLowerCase())) ||
         (product.gamma && product.gamma.toLowerCase().includes(searchQuery.toLowerCase()))
       
-      const matchesStatus = statusFilter === 'all' || product.statuses.some(s => s === statusFilter)
+      const statuses = normalizeStatuses(product.statuses, product.quantity)
+      const matchesStatus = statusFilter === 'all' || statusFilter === 'active-only' || statuses.some(s => s === statusFilter)
       const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter
       const matchesMainCategory = mainCategoryFilter === 'all' || product.mainCategory === mainCategoryFilter
       const matchesGamma = gammaFilter === 'all' || product.gamma === gammaFilter
@@ -110,16 +126,6 @@ export function ProductsPage({ products, onEditProduct, onDeleteProduct, onBulkU
     return [...filteredProducts].sort((a, b) => {
       let aVal: any
       let bVal: any
-      
-      // Normalizuj statusy dla obliczeń available/inUse
-      const getStatuses = (p: Product) => {
-        let statuses = p.statuses || []
-        if (typeof statuses === 'string') {
-          try { statuses = JSON.parse(statuses as any) } catch { statuses = [] }
-        }
-        if (!Array.isArray(statuses)) statuses = []
-        return statuses
-      }
       
       switch (sortField) {
         case 'barcode':
@@ -147,16 +153,17 @@ export function ProductsPage({ products, onEditProduct, onDeleteProduct, onBulkU
           bVal = Number(b.priceGross) || Number(b.price) || 0
           break
         case 'quantity':
-          aVal = a.quantity || 0
-          bVal = b.quantity || 0
+          // Sortuj po aktywnej ilości, nie całkowitej
+          aVal = normalizeStatuses(a.statuses, a.quantity).filter(s => s === 'available' || s === 'in-use').length
+          bVal = normalizeStatuses(b.statuses, b.quantity).filter(s => s === 'available' || s === 'in-use').length
           break
         case 'available':
-          aVal = getStatuses(a).filter(s => s === 'available').length
-          bVal = getStatuses(b).filter(s => s === 'available').length
+          aVal = normalizeStatuses(a.statuses, a.quantity).filter(s => s === 'available').length
+          bVal = normalizeStatuses(b.statuses, b.quantity).filter(s => s === 'available').length
           break
         case 'inUse':
-          aVal = getStatuses(a).filter(s => s === 'in-use').length
-          bVal = getStatuses(b).filter(s => s === 'in-use').length
+          aVal = normalizeStatuses(a.statuses, a.quantity).filter(s => s === 'in-use').length
+          bVal = normalizeStatuses(b.statuses, b.quantity).filter(s => s === 'in-use').length
           break
         case 'purchaseDate':
           aVal = new Date(a.purchaseDate || 0).getTime()
@@ -401,12 +408,13 @@ export function ProductsPage({ products, onEditProduct, onDeleteProduct, onBulkU
             </Select>
           </div>
           
-          <Select value={statusFilter} onValueChange={(value: ProductStatus | 'all') => setStatusFilter(value)}>
+          <Select value={statusFilter} onValueChange={(value: ProductStatus | 'all' | 'active-only') => setStatusFilter(value)}>
             <SelectTrigger className="h-11">
               <SelectValue placeholder="Filtruj status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Wszystkie statusy</SelectItem>
+              <SelectItem value="all">Wszystkie produkty</SelectItem>
+              <SelectItem value="active-only">Tylko aktywne</SelectItem>
               <SelectItem value="available">Dostępne</SelectItem>
               <SelectItem value="in-use">W Użyciu</SelectItem>
               <SelectItem value="used">Zużyte</SelectItem>

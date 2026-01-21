@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Product, PRODUCT_CATEGORIES } from '@/lib/types'
+import { Product, PRODUCT_CATEGORIES, hasActiveUnits } from '@/lib/types'
 import { Separator } from '@/components/ui/separator'
 import { motion, AnimatePresence } from 'framer-motion'
 import { CaretLeft } from '@phosphor-icons/react'
@@ -27,10 +27,13 @@ export function ProductEditDialog({
   const [editingData, setEditingData] = useState<Product | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.barcode.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  // Filtruj tylko produkty z aktywnymi jednostkami
+  const filteredProducts = products
+    .filter(hasActiveUnits)
+    .filter(p =>
+      p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.barcode.toLowerCase().includes(searchQuery.toLowerCase())
+    )
 
   const handleSelectProduct = (product: Product) => {
     setSelectedProduct(product)

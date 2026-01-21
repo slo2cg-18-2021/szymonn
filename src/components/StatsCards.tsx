@@ -1,4 +1,4 @@
-import { Product, calculateSalePrice, calculateDiscountedPrice, calculateNetPrice, VatRate } from '@/lib/types'
+import { Product, calculateSalePrice, calculateDiscountedPrice, calculateNetPrice, VatRate, normalizeStatuses, hasActiveUnits } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckCircle, Clock, ShoppingCart, Package, Recycle } from '@phosphor-icons/react'
 
@@ -9,24 +9,20 @@ interface StatsCardsProps {
 export function StatsCards({ products }: StatsCardsProps) {
   // Helper do normalizacji statusów
   const getStatuses = (p: Product): string[] => {
-    let statuses = p.statuses
-    if (typeof statuses === 'string') {
-      try { statuses = JSON.parse(statuses as any) } catch { statuses = [] }
-    }
-    if (!Array.isArray(statuses) || statuses.length === 0) {
-      return p.quantity > 0 ? Array(p.quantity).fill('available') : []
-    }
-    return statuses
+    return normalizeStatuses(p.statuses, p.quantity)
   }
 
-  const totalProducts = products.length
+  // Produkty z aktywnymi jednostkami (nie wszystkie zużyte/sprzedane)
+  const activeProducts = products.filter(hasActiveUnits)
+  const totalProducts = activeProducts.length
+  // Liczniki dla wszystkich produktów (aktywnych i nieaktywnych)
   const availableCount = products.reduce((sum, p) => sum + getStatuses(p).filter(s => s === 'available').length, 0)
   const inUseCount = products.reduce((sum, p) => sum + getStatuses(p).filter(s => s === 'in-use').length, 0)
   const usedCount = products.reduce((sum, p) => sum + getStatuses(p).filter(s => s === 'used').length, 0)
   const soldCount = products.reduce((sum, p) => sum + getStatuses(p).filter(s => s === 'sold' || s === 'sold-discount').length, 0)
   
-  // Wartość magazynu - oblicz wartości brutto i netto osobno
-  const { totalValueGross, totalValueNet } = products.reduce((acc, p) => {
+  // Wartość magazynu - oblicz wartości brutto i netto osobno (tylko aktywne produkty)
+  const { totalValueGross, totalValueNet } = activeProducts.reduce((acc, p) => {
     const salePrice = Number(p.salePrice) || 0
     const priceGross = Number(p.price) || Number(p.priceGross) || (salePrice > 0 ? salePrice / 1.8 : 0)
     const vatRate = (p.vatRate || 23) as VatRate

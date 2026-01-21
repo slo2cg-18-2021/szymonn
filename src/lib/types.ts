@@ -98,6 +98,48 @@ export const calculateDiscountedPrice = (salePrice: number, discountPercent: num
   return salePrice * (1 - discountPercent / 100)
 }
 
+// Statusy które oznaczają aktywny produkt (dostępny do użycia)
+export const ACTIVE_STATUSES: ProductStatus[] = ['available', 'in-use']
+
+// Statusy które oznaczają nieaktywny produkt (zużyty/sprzedany)
+export const INACTIVE_STATUSES: ProductStatus[] = ['used', 'sold', 'sold-discount']
+
+// Normalizuj statusy produktu
+export const normalizeStatuses = (statuses: ProductStatus[] | string | undefined, quantity: number): ProductStatus[] => {
+  let result = statuses || []
+  if (typeof result === 'string') {
+    try { result = JSON.parse(result as any) } catch { result = [] }
+  }
+  if (!Array.isArray(result) || result.length === 0) {
+    return quantity > 0 ? Array(quantity).fill('available') : []
+  }
+  return result as ProductStatus[]
+}
+
+// Sprawdź czy produkt ma jakiekolwiek aktywne sztuki (available lub in-use)
+export const hasActiveUnits = (product: Product): boolean => {
+  const statuses = normalizeStatuses(product.statuses, product.quantity)
+  return statuses.some(s => ACTIVE_STATUSES.includes(s))
+}
+
+// Policz aktywne sztuki produktu
+export const getActiveQuantity = (product: Product): number => {
+  const statuses = normalizeStatuses(product.statuses, product.quantity)
+  return statuses.filter(s => ACTIVE_STATUSES.includes(s)).length
+}
+
+// Policz dostępne sztuki produktu (tylko 'available')
+export const getAvailableQuantity = (product: Product): number => {
+  const statuses = normalizeStatuses(product.statuses, product.quantity)
+  return statuses.filter(s => s === 'available').length
+}
+
+// Policz sztuki w użyciu
+export const getInUseQuantity = (product: Product): number => {
+  const statuses = normalizeStatuses(product.statuses, product.quantity)
+  return statuses.filter(s => s === 'in-use').length
+}
+
 // Pobierz kategorie dla danego typu produktu
 export const getCategoriesForType = (mainCategory: MainCategory): string[] => {
   if (mainCategory === 'technical') {

@@ -1,4 +1,4 @@
-import { Product } from '@/lib/types'
+import { Product, getAvailableQuantity, hasActiveUnits } from '@/lib/types'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Warning } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -9,13 +9,16 @@ interface LowStockAlertProps {
 }
 
 export function LowStockAlert({ products, threshold = 2 }: LowStockAlertProps) {
-  const lowStockProducts = products.filter(product => {
-    const availableCount = (product.statuses || []).filter(s => s === 'available').length
+  // Filtruj tylko produkty z aktywnymi jednostkami
+  const activeProducts = products.filter(hasActiveUnits)
+  
+  const lowStockProducts = activeProducts.filter(product => {
+    const availableCount = getAvailableQuantity(product)
     return availableCount > 0 && availableCount <= threshold
   })
 
-  const outOfStockProducts = products.filter(product => {
-    const availableCount = (product.statuses || []).filter(s => s === 'available').length
+  const outOfStockProducts = activeProducts.filter(product => {
+    const availableCount = getAvailableQuantity(product)
     return availableCount === 0
   })
 
@@ -52,7 +55,7 @@ export function LowStockAlert({ products, threshold = 2 }: LowStockAlertProps) {
             <AlertDescription className="text-yellow-700/80">
               <span className="font-medium">{lowStockProducts.length}</span> {lowStockProducts.length === 1 ? 'produkt ma' : 'produktów ma'} niski stan:{' '}
               <span className="font-medium">
-                {lowStockProducts.slice(0, 3).map(p => `${p.name} (${(p.statuses || []).filter(s => s === 'available').length} szt.)`).join(', ')}
+                {lowStockProducts.slice(0, 3).map(p => `${p.name} (${getAvailableQuantity(p)} szt.)`).join(', ')}
                 {lowStockProducts.length > 3 && ` i ${lowStockProducts.length - 3} więcej`}
               </span>
             </AlertDescription>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Product, ProductStatus, calculateSalePrice, calculateNetPrice, VatRate } from '@/lib/types'
+import { Product, ProductStatus, calculateSalePrice, calculateNetPrice, VatRate, hasActiveUnits } from '@/lib/types'
 import Login from '@/components/Login'
 import { AdminLayout, PageType } from '@/components/AdminLayout'
 import { AddProductsPage } from '@/components/pages/AddProductsPage'
@@ -202,12 +202,20 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
     const existingProduct = (products || []).find(p => p.barcode === barcode)
     
     if (existingProduct) {
-      // Produkt już istnieje - otwórz dialog dostawy
+      // Produkt już istnieje w bazie - otwórz dialog dostawy
+      // Działa też dla produktów ze wszystkimi zużytymi jednostkami
       setDeliveryProduct(existingProduct)
       setDeliveryDialogOpen(true)
-      toast.info('Produkt już w bazie', {
-        description: 'Możesz dodać nową dostawę'
-      })
+      
+      if (hasActiveUnits(existingProduct)) {
+        toast.info('Produkt już w bazie', {
+          description: 'Możesz dodać nową dostawę'
+        })
+      } else {
+        toast.info('Produkt w bazie (wszystkie zużyte/sprzedane)', {
+          description: 'Możesz dodać nową dostawę'
+        })
+      }
     } else {
       // Nowy produkt - otwórz formularz dodawania
       setScannedBarcode(barcode)

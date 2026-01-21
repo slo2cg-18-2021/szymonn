@@ -1,4 +1,4 @@
-import { Product } from '@/lib/types'
+import { Product, normalizeStatuses, getAvailableQuantity, getInUseQuantity, getActiveQuantity } from '@/lib/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,15 +11,9 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
-  const getStatusCounts = () => {
-    return {
-      available: product.statuses.filter(s => s === 'available').length,
-      inUse: product.statuses.filter(s => s === 'in-use').length,
-      sold: product.statuses.filter(s => s === 'sold').length
-    }
-  }
-
-  const statuses = getStatusCounts()
+  const available = getAvailableQuantity(product)
+  const inUse = getInUseQuantity(product)
+  const activeQuantity = getActiveQuantity(product)
 
   return (
     <Card>
@@ -57,8 +51,8 @@ export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
             <p className="text-sm font-medium">${Number(product.price).toFixed(2)}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Ilość</p>
-            <p className="text-sm font-medium">{product.quantity}</p>
+            <p className="text-xs text-muted-foreground">Ilość aktywna</p>
+            <p className="text-sm font-medium">{activeQuantity}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Data Zakupu</p>
@@ -66,11 +60,11 @@ export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Dostępne</p>
-            <p className="text-sm font-medium text-green-600">{statuses.available}</p>
+            <p className="text-sm font-medium text-green-600">{available}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">W Użyciu</p>
-            <p className="text-sm font-medium text-yellow-600">{statuses.inUse}</p>
+            <p className="text-sm font-medium text-yellow-600">{inUse}</p>
           </div>
         </div>
         

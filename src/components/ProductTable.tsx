@@ -1,4 +1,4 @@
-import { Product } from '@/lib/types'
+import { Product, normalizeStatuses, getActiveQuantity } from '@/lib/types'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -92,14 +92,11 @@ export function ProductTable({
           <TableBody>
             {products.map((product) => {
               // Normalizuj statusy
-              let statuses = product.statuses || []
-              if (typeof statuses === 'string') {
-                try { statuses = JSON.parse(statuses as any) } catch { statuses = [] }
-              }
-              if (!Array.isArray(statuses)) statuses = []
+              const statuses = normalizeStatuses(product.statuses, product.quantity)
               
               const available = statuses.filter(s => s === 'available').length
               const inUse = statuses.filter(s => s === 'in-use').length
+              const activeQuantity = getActiveQuantity(product)
               const price = Number(product.priceGross) || Number(product.price) || 0
               return (
               <TableRow key={product.id} className={`hover:bg-muted/30 ${selectedIds.has(product.id) ? 'bg-primary/10' : ''}`}>
@@ -118,7 +115,7 @@ export function ProductTable({
                 <TableCell>{product.category}</TableCell>
                 <TableCell className="text-muted-foreground">{product.gamma || '-'}</TableCell>
                 <TableCell>{price.toFixed(2)} zł</TableCell>
-                <TableCell>{product.quantity}</TableCell>
+                <TableCell>{activeQuantity}</TableCell>
                 <TableCell><span className="text-green-600 font-medium">{available}</span></TableCell>
                 <TableCell><span className="text-yellow-600 font-medium">{inUse}</span></TableCell>
                 <TableCell>{new Date(product.purchaseDate).toLocaleDateString('pl-PL')}</TableCell>

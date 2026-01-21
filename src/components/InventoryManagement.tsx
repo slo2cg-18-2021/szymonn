@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Product, ProductStatus, STATUS_LABELS, calculateSalePrice, calculateDiscountedPrice, MAIN_CATEGORY_LABELS, calculateNetPrice, VatRate } from '@/lib/types'
+import { Product, ProductStatus, STATUS_LABELS, calculateSalePrice, calculateDiscountedPrice, MAIN_CATEGORY_LABELS, calculateNetPrice, VatRate, hasActiveUnits, getActiveQuantity, normalizeStatuses } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Checkbox } from '@/components/ui/checkbox'
 import { MagnifyingGlass } from '@phosphor-icons/react'
 import { toast } from 'sonner'
 
@@ -23,13 +24,17 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
   const [discountValue, setDiscountValue] = useState('')
   const [finalPriceValue, setFinalPriceValue] = useState('')
   const [discountMode, setDiscountMode] = useState<'percent' | 'price'>('percent')
+  const [showInactive, setShowInactive] = useState(false)
 
   const filteredProducts = useMemo(() => {
-    return products.filter(product =>
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.barcode.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  }, [products, searchQuery])
+    // Pokaż wszystkie produkty lub tylko aktywne, w zależności od ustawienia
+    return products
+      .filter(product => showInactive || hasActiveUnits(product))
+      .filter(product =>
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.barcode.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+  }, [products, searchQuery, showInactive])
 
   const selectedProduct = products.find(p => p.id === selectedProductId)
 
@@ -242,14 +247,26 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
       <div className="bg-card border border-border rounded-xl p-4 sm:p-6">
         <h2 className="text-lg sm:text-xl font-semibold mb-4">Zarządzanie Stanami Produktów</h2>
         
-        <div className="relative flex-1 mb-4">
-          <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-          <Input
-            placeholder="Szukaj produktu..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-11 h-11"
-          />
+        <div className="flex flex-col sm:flex-row gap-4 mb-4">
+          <div className="relative flex-1">
+            <MagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+            <Input
+              placeholder="Szukaj produktu..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-11 h-11"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="showInactive"
+              checked={showInactive}
+              onCheckedChange={(checked) => setShowInactive(!!checked)}
+            />
+            <Label htmlFor="showInactive" className="text-sm cursor-pointer">
+              Pokaż zużyte/sprzedane
+            </Label>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -259,26 +276,37 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
               {filteredProducts.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-4">Brak produktów</p>
               ) : (
-                filteredProducts.map(product => (
+                filteredProducts.map(product => {
+                  const activeQty = getActiveQuantity(product)
+                  const isFullyInactive = !hasActiveUnits(product)
+                  return (
                   <button
                     key={product.id}
                     onClick={() => setSelectedProductId(product.id)}
                     className={`w-full text-left p-2 rounded text-sm transition-colors ${
                       selectedProductId === product.id
                         ? 'bg-accent text-accent-foreground'
-                        : 'hover:bg-muted'
+                        : isFullyInactive 
+                          ? 'hover:bg-muted bg-muted/50 opacity-60' 
+                          : 'hover:bg-muted'
                     }`}
                   >
                     <div className="font-medium">{product.name}</div>
                     <div className="text-xs text-muted-foreground">{product.barcode}</div>
                     <div className="text-xs mt-1 flex justify-between">
-                      <span>Ilość: <span className="font-semibold">{product.quantity}</span></span>
+                      <span>
+                        Aktywne: <span className="font-semibold">{activeQty}</span>
+                        <span className="text-muted-foreground"> / {product.quantity}</span>
+                      </span>
                       <span className={product.mainCategory === 'technical' ? 'text-orange-600' : 'text-blue-600'}>
                         {product.mainCategory === 'technical' ? 'Tech.' : 'Odspr.'}
                       </span>
                     </div>
+                    {isFullyInactive && (
+                      <div className="text-xs text-red-500 mt-1">Wszystkie zużyte/sprzedane</div>
+                    )}
                   </button>
-                ))
+                )})
               )}
             </div>
           </div>
