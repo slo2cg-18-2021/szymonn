@@ -413,7 +413,7 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
             <OfflineStatusBanner />
             <EditProductPage
               products={products || []}
-              onUpdateProduct={handleEditProduct}
+              onUpdateProduct={handleUpdateProduct}
               onDeleteProduct={handleDeleteProduct}
               brands={brands}
               gammas={gammas}
