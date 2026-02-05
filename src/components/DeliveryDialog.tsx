@@ -4,12 +4,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Product, MAIN_CATEGORY_LABELS, STATUS_LABELS, ProductStatus, calculateSalePrice, calculateNetPrice, VatRate } from '@/lib/types'
+import { Product, MAIN_CATEGORY_LABELS, STATUS_LABELS, ProductStatus, calculateSalePrice, calculateNetPrice, calculateGrossPrice, VatRate } from '@/lib/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Package, Plus, Tag, Barcode, CurrencyCircleDollar } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Separator } from '@/components/ui/separator'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 
 interface DeliveryDialogProps {
   open: boolean
@@ -27,7 +28,31 @@ export function DeliveryDialog({
   const [quantity, setQuantity] = useState('1')
   const [selectedStatus, setSelectedStatus] = useState<ProductStatus>('available')
   const [updatePrice, setUpdatePrice] = useState(false)
+  const [priceMode, setPriceMode] = useState<'gross' | 'net'>('gross')
   const [newPriceGross, setNewPriceGross] = useState('')
+  const [newPriceNet, setNewPriceNet] = useState('')
+
+  const vatRate = (product.vatRate || 23) as VatRate
+
+  // Przeliczanie cen przy zmianie wartości
+  const handlePriceChange = (value: string, mode: 'net' | 'gross') => {
+    const price = parseFloat(value) || 0
+    if (mode === 'gross') {
+      setNewPriceGross(value)
+      if (price > 0) {
+        setNewPriceNet(calculateNetPrice(price, vatRate).toFixed(2))
+      } else {
+        setNewPriceNet('')
+      }
+    } else {
+      setNewPriceNet(value)
+      if (price > 0) {
+        setNewPriceGross(calculateGrossPrice(price, vatRate).toFixed(2))
+      } else {
+        setNewPriceGross('')
+      }
+    }
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -39,7 +64,9 @@ export function DeliveryDialog({
       setQuantity('1')
       setSelectedStatus('available')
       setUpdatePrice(false)
+      setPriceMode('gross')
       setNewPriceGross('')
+      setNewPriceNet('')
       onOpenChange(false)
     }
   }
@@ -180,22 +207,64 @@ export function DeliveryDialog({
                     <strong>Uwaga:</strong> Stare sztuki zachowają cenę {currentPrice.toFixed(2)} zł. 
                     Tylko nowe sztuki będą miały nową cenę.
                   </p>
-                  <div className="grid gap-2">
-                    <Label htmlFor="newPrice">Nowa cena brutto (zł)</Label>
-                    <Input
-                      id="newPrice"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={newPriceGross}
-                      onChange={(e) => setNewPriceGross(e.target.value)}
-                      placeholder={currentPrice.toFixed(2)}
-                      className="h-11"
-                    />
+                  
+                  {/* Wybór trybu ceny */}
+                  <div className="space-y-2">
+                    <Label className="text-sm">Wpisuję cenę:</Label>
+                    <RadioGroup
+                      value={priceMode}
+                      onValueChange={(value: 'gross' | 'net') => setPriceMode(value)}
+                      className="flex gap-4"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="gross" id="price-gross" />
+                        <Label htmlFor="price-gross" className="cursor-pointer font-normal">Brutto</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="net" id="price-net" />
+                        <Label htmlFor="price-net" className="cursor-pointer font-normal">Netto</Label>
+                      </div>
+                    </RadioGroup>
                   </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor="newPriceNet">Cena netto (zł)</Label>
+                      <Input
+                        id="newPriceNet"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={newPriceNet}
+                        onChange={(e) => handlePriceChange(e.target.value, 'net')}
+                        placeholder={(calculateNetPrice(currentPrice, vatRate)).toFixed(2)}
+                        className={`h-11 ${priceMode === 'net' ? 'ring-2 ring-primary' : ''}`}
+                        disabled={priceMode !== 'net'}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="newPriceGross">Cena brutto (zł)</Label>
+                      <Input
+                        id="newPriceGross"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={newPriceGross}
+                        onChange={(e) => handlePriceChange(e.target.value, 'gross')}
+                        placeholder={currentPrice.toFixed(2)}
+                        className={`h-11 ${priceMode === 'gross' ? 'ring-2 ring-primary' : ''}`}
+                        disabled={priceMode !== 'gross'}
+                      />
+                    </div>
+                  </div>
+                  
+                  <p className="text-xs text-muted-foreground">
+                    VAT: {vatRate}% • Drugie pole wylicza się automatycznie
+                  </p>
+                  
                   {newPriceGross && (
                     <p className="text-sm text-yellow-700">
-                      Nowa cena sprzedaży (marża 80% od netto): <strong>{calculateSalePrice(calculateNetPrice(parseFloat(newPriceGross) || 0, (product.vatRate || 23) as VatRate), (product.vatRate || 23) as VatRate).toFixed(2)} zł</strong>
+                      Nowa cena sprzedaży (marża 80% od netto): <strong>{calculateSalePrice(parseFloat(newPriceNet) || 0, vatRate).toFixed(2)} zł</strong>
                     </p>
                   )}
                 </div>
