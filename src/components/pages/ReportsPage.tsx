@@ -18,7 +18,9 @@ import {
   ArrowUp,
   ArrowDown,
   Pencil,
-  Trash
+  Trash,
+  CaretDown,
+  CaretUp
 } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 
@@ -55,6 +57,7 @@ export function ReportsPage({ products, onUpdateProduct }: ReportsPageProps) {
   const [editingSale, setEditingSale] = useState<SoldUnit | null>(null)
   const [editingFinalPrice, setEditingFinalPrice] = useState('')
   const [editingSaleDate, setEditingSaleDate] = useState('')
+  const [expandedMonth, setExpandedMonth] = useState<string | null>(null)
 
   const years = useMemo(() => {
     const yearsSet = new Set<number>()
@@ -389,9 +392,10 @@ export function ReportsPage({ products, onUpdateProduct }: ReportsPageProps) {
 
       <Separator />
 
-      {/* Tabela miesięczna */}
+      {/* Tabela miesięczna z rozwijaniem */}
       <div>
-        <h2 className="text-xl font-semibold mb-4">Podsumowanie Miesięczne</h2>
+        <h2 className="text-xl font-semibold mb-1">Podsumowanie Miesięczne</h2>
+        <p className="text-sm text-muted-foreground mb-4">Kliknij w miesiąc ze sprzedażą, aby zobaczyć szczegóły</p>
         <div className="border rounded-xl overflow-hidden bg-card">
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -409,17 +413,130 @@ export function ReportsPage({ products, onUpdateProduct }: ReportsPageProps) {
                 {monthlyStats.map((month) => {
                   const monthProfit = month.soldValue - month.purchasedValue
                   const hasData = month.soldCount > 0 || month.purchasedCount > 0
+                  const isExpanded = expandedMonth === month.monthKey
+                  const monthUnits = soldUnits.filter(u =>
+                    u.saleDate && u.saleDate.startsWith(month.monthKey)
+                  )
                   return (
-                    <tr key={month.monthKey} className={`border-t ${!hasData ? 'text-muted-foreground bg-muted/20' : ''}`}>
-                      <td className="p-4 font-medium">{month.month}</td>
-                      <td className="p-4 text-right">{month.soldCount}</td>
-                      <td className="p-4 text-right text-green-600 font-medium">{month.soldValue.toFixed(2)} zł</td>
-                      <td className="p-4 text-right">{month.purchasedCount}</td>
-                      <td className="p-4 text-right text-red-600 font-medium">{month.purchasedValue.toFixed(2)} zł</td>
-                      <td className={`p-4 text-right font-bold ${monthProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {monthProfit >= 0 ? '+' : ''}{monthProfit.toFixed(2)} zł
-                      </td>
-                    </tr>
+                    <>
+                      <tr
+                        key={month.monthKey}
+                        className={`border-t transition-colors ${
+                          !hasData
+                            ? 'text-muted-foreground bg-muted/20'
+                            : month.soldCount > 0
+                            ? 'cursor-pointer hover:bg-accent/40' + (isExpanded ? ' bg-accent/20' : '')
+                            : ''
+                        }`}
+                        onClick={() => {
+                          if (month.soldCount > 0) {
+                            setExpandedMonth(isExpanded ? null : month.monthKey)
+                          }
+                        }}
+                      >
+                        <td className="p-4 font-medium">
+                          <div className="flex items-center gap-2">
+                            {month.soldCount > 0 ? (
+                              isExpanded
+                                ? <CaretUp className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                                : <CaretDown className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                            ) : (
+                              <span className="w-4 inline-block" />
+                            )}
+                            {month.month}
+                          </div>
+                        </td>
+                        <td className="p-4 text-right">{month.soldCount}</td>
+                        <td className="p-4 text-right text-green-600 font-medium">{month.soldValue.toFixed(2)} zł</td>
+                        <td className="p-4 text-right">{month.purchasedCount}</td>
+                        <td className="p-4 text-right text-red-600 font-medium">{month.purchasedValue.toFixed(2)} zł</td>
+                        <td className={`p-4 text-right font-bold ${monthProfit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {monthProfit >= 0 ? '+' : ''}{monthProfit.toFixed(2)} zł
+                        </td>
+                      </tr>
+                      {isExpanded && monthUnits.length > 0 && (
+                        <tr key={month.monthKey + '-details'}>
+                          <td colSpan={6} className="p-0 bg-accent/10 border-t border-accent/30">
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-xs">
+                                <thead>
+                                  <tr className="bg-accent/20">
+                                    <th className="text-left px-6 py-2 font-medium text-muted-foreground">Data</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Produkt</th>
+                                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">Marka</th>
+                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground">Cena sprzedaży</th>
+                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground">Rabat</th>
+                                    <th className="text-right px-3 py-2 font-medium text-muted-foreground">Cena końcowa</th>
+                                    <th className="text-right px-3 py-2"></th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {monthUnits.map((unit, idx) => (
+                                    <tr key={`${unit.productId}-${unit.unitIndex}-${idx}`} className="border-t border-accent/20 hover:bg-accent/20 transition-colors">
+                                      <td className="px-6 py-2 text-muted-foreground">
+                                        {unit.saleDate ? new Date(unit.saleDate).toLocaleDateString('pl-PL') : '—'}
+                                      </td>
+                                      <td className="px-3 py-2">
+                                        <div className="font-medium">{unit.productName}</div>
+                                        <div className="text-muted-foreground font-mono">{unit.barcode}</div>
+                                      </td>
+                                      <td className="px-3 py-2 text-muted-foreground">{unit.brand}</td>
+                                      <td className="px-3 py-2 text-right">{unit.salePrice.toFixed(2)} zł</td>
+                                      <td className="px-3 py-2 text-right">
+                                        {unit.discountPercent > 0 ? (
+                                          <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100">
+                                            -{unit.discountPercent.toFixed(1)}%
+                                          </Badge>
+                                        ) : (
+                                          <span className="text-muted-foreground">—</span>
+                                        )}
+                                      </td>
+                                      <td className="px-3 py-2 text-right font-semibold text-green-600">{unit.finalPrice.toFixed(2)} zł</td>
+                                      <td className="px-3 py-2 text-right">
+                                        <div className="flex items-center justify-end gap-1">
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 w-7 p-0"
+                                            onClick={(e) => { e.stopPropagation(); handleOpenEdit(unit) }}
+                                            title="Edytuj"
+                                          >
+                                            <Pencil className="w-3.5 h-3.5" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 w-7 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              if (window.confirm(`Cofnąć sprzedaż "${unit.productName}"?\nSztuka wróci do stanu Dostępny.`)) {
+                                                handleDeleteSale(unit)
+                                              }
+                                            }}
+                                            title="Cofnij sprzedaż"
+                                          >
+                                            <Trash className="w-3.5 h-3.5" />
+                                          </Button>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                                <tfoot>
+                                  <tr className="border-t border-accent/30 bg-accent/20 font-semibold">
+                                    <td colSpan={5} className="px-6 py-2 text-muted-foreground">Suma {month.month}</td>
+                                    <td className="px-3 py-2 text-right text-green-600">
+                                      {monthUnits.reduce((s, u) => s + u.finalPrice, 0).toFixed(2)} zł
+                                    </td>
+                                    <td className="px-3 py-2"></td>
+                                  </tr>
+                                </tfoot>
+                              </table>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </>
                   )
                 })}
               </tbody>
@@ -438,97 +555,6 @@ export function ReportsPage({ products, onUpdateProduct }: ReportsPageProps) {
             </table>
           </div>
         </div>
-      </div>
-
-      <Separator />
-
-      {/* Szczegóły Sprzedaży */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Szczegóły Sprzedaży ({selectedYear})</h2>
-        {filteredSoldUnits.length === 0 ? (
-          <Card className="border-dashed">
-            <CardContent className="py-8 text-center text-muted-foreground">
-              Brak sprzedanych produktów w roku {selectedYear}
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="border rounded-xl overflow-hidden bg-card">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-muted/50">
-                  <tr>
-                    <th className="text-left p-3 font-medium">Data</th>
-                    <th className="text-left p-3 font-medium">Produkt</th>
-                    <th className="text-left p-3 font-medium">Marka</th>
-                    <th className="text-right p-3 font-medium">Cena Sprzedaży</th>
-                    <th className="text-right p-3 font-medium">Rabat</th>
-                    <th className="text-right p-3 font-medium">Cena Końcowa</th>
-                    <th className="text-right p-3 font-medium">Akcje</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredSoldUnits.map((unit, idx) => (
-                    <tr key={`${unit.productId}-${unit.unitIndex}-${idx}`} className="border-t hover:bg-muted/30 transition-colors">
-                      <td className="p-3 text-muted-foreground">
-                        {unit.saleDate ? new Date(unit.saleDate).toLocaleDateString('pl-PL') : '—'}
-                      </td>
-                      <td className="p-3">
-                        <div className="font-medium">{unit.productName}</div>
-                        <div className="text-xs text-muted-foreground font-mono">{unit.barcode}</div>
-                      </td>
-                      <td className="p-3 text-muted-foreground">{unit.brand}</td>
-                      <td className="p-3 text-right">{unit.salePrice.toFixed(2)} zł</td>
-                      <td className="p-3 text-right">
-                        {unit.discountPercent > 0 ? (
-                          <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100">
-                            -{unit.discountPercent.toFixed(1)}%
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">—</span>
-                        )}
-                      </td>
-                      <td className="p-3 text-right font-semibold text-green-600">{unit.finalPrice.toFixed(2)} zł</td>
-                      <td className="p-3 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleOpenEdit(unit)}
-                            title="Edytuj sprzedaż"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                            onClick={() => {
-                              if (window.confirm(`Czy na pewno cofnąć sprzedaż "${unit.productName}"?\nStatus sztuki wróci do "Dostępny".`)) {
-                                handleDeleteSale(unit)
-                              }
-                            }}
-                            title="Cofnij sprzedaż"
-                          >
-                            <Trash className="w-4 h-4" />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="bg-muted/50 font-bold border-t-2">
-                  <tr>
-                    <td colSpan={5} className="p-3">RAZEM {selectedYear}</td>
-                    <td className="p-3 text-right text-green-600">
-                      {filteredSoldUnits.reduce((sum, u) => sum + u.finalPrice, 0).toFixed(2)} zł
-                    </td>
-                    <td className="p-3"></td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Dialog edycji sprzedaży */}
