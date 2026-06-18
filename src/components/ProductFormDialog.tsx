@@ -23,6 +23,7 @@ import {
 import { Separator } from '@/components/ui/separator'
 import { Card, CardContent } from '@/components/ui/card'
 import { Barcode, Tag, Package, Calculator } from '@phosphor-icons/react'
+import { toast } from 'sonner'
 
 interface ProductFormDialogProps {
   open: boolean
@@ -170,6 +171,11 @@ export function ProductFormDialog({
     
     // Walidacja - cena brutto i cena sprzedaży są wymagane
     if (!formData.barcode || !formData.name || !formData.brand || priceGross <= 0 || salePrice <= 0) {
+      if (!formData.barcode) toast.error('Wpisz kod kreskowy')
+      else if (!formData.name) toast.error('Wpisz nazwę produktu')
+      else if (!formData.brand) toast.error('Wybierz markę')
+      else if (priceGross <= 0) toast.error('Wpisz cenę brutto')
+      else if (salePrice <= 0) toast.error('Wpisz cenę sprzedaży dla klienta')
       return
     }
     

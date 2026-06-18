@@ -176,7 +176,7 @@ export function DeliveryDialog({
                 </SelectTrigger>
                 <SelectContent>
                   {(Object.entries(STATUS_LABELS) as [ProductStatus, string][])
-                    .filter(([value]) => value !== 'sold-discount') // Bez "sprzedany z rabatem" przy dostawie
+                    .filter(([value]) => value === 'available' || value === 'in-use') // Dostawa = tylko aktywne statusy
                     .map(([value, label]) => (
                       <SelectItem key={value} value={value}>{label}</SelectItem>
                     ))
