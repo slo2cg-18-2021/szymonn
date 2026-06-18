@@ -327,7 +327,7 @@ export function ProductFormDialog({
               <CardContent className="pt-4 space-y-4">
                 <div className="flex items-center gap-2 text-sm font-medium">
                   <Calculator className="w-4 h-4" />
-                  Cena i VAT
+                  Cena zakupu i VAT
                 </div>
 
                 <div className="grid grid-cols-3 gap-3">
@@ -385,26 +385,32 @@ export function ProductFormDialog({
                     />
                   </div>
                 </div>
+              </CardContent>
+            </Card>
 
-                <div className="grid gap-2">
-                  <Label htmlFor="salePrice">Cena Sprzedaży (dla klienta) *</Label>
-                  <Input
-                    id="salePrice"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.salePrice}
-                    onChange={(e) => setFormData(prev => ({ ...prev, salePrice: e.target.value }))}
-                    placeholder="0.00"
-                    required
-                    className="h-11 font-medium"
-                  />
-                  {formData.priceNet && (
-                    <p className="text-xs text-muted-foreground">
-                      Sugestia (marża 80%): {calculateSalePrice(parseFloat(formData.priceNet) || 0, formData.vatRate).toFixed(2)} zł
-                    </p>
-                  )}
+            {/* Cena sprzedaży - wyróżniona */}
+            <Card className="border-2 border-green-200 bg-green-50/50">
+              <CardContent className="pt-4 space-y-3">
+                <div className="flex items-center gap-2 text-sm font-semibold text-green-800">
+                  <Tag className="w-4 h-4" />
+                  Cena Sprzedaży dla Klienta *
                 </div>
+                <Input
+                  id="salePrice"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.salePrice}
+                  onChange={(e) => setFormData(prev => ({ ...prev, salePrice: e.target.value }))}
+                  placeholder="0.00"
+                  required
+                  className="h-13 text-xl font-bold border-green-300 focus:border-green-500"
+                />
+                {formData.priceNet && (
+                  <p className="text-xs text-green-700">
+                    Sugestia (marża 80% od netto): <span className="font-semibold">{calculateSalePrice(parseFloat(formData.priceNet) || 0, formData.vatRate).toFixed(2)} zł</span>
+                  </p>
+                )}
               </CardContent>
             </Card>
 
