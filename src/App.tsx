@@ -471,7 +471,7 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
           </>
         )
       case 'reports':
-        return <ReportsPage products={products || []} />
+        return <ReportsPage products={products || []} onUpdateProduct={handleUpdateProduct} />
       case 'settings':
         return (
           <SettingsPage 

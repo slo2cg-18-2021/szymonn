@@ -1,8 +1,13 @@
 import { useState, useMemo } from 'react'
-import { Product, calculateSalePrice, calculateDiscountedPrice, calculateNetPrice, VatRate } from '@/lib/types'
+import { Product, ProductStatus, calculateSalePrice, calculateDiscountedPrice, calculateNetPrice, VatRate } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { 
   ChartBar, 
   TrendUp, 
@@ -11,12 +16,28 @@ import {
   CurrencyCircleDollar,
   CalendarBlank,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Pencil,
+  Trash
 } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 
+interface SoldUnit {
+  productId: string
+  productName: string
+  barcode: string
+  brand: string
+  unitIndex: number
+  salePrice: number
+  discountPercent: number
+  finalPrice: number
+  saleDate: string
+  status: 'sold' | 'sold-discount'
+}
+
 interface ReportsPageProps {
   products: Product[]
+  onUpdateProduct?: (product: Product) => void
 }
 
 interface MonthlyStats {
@@ -28,9 +49,12 @@ interface MonthlyStats {
   purchasedValue: number
 }
 
-export function ReportsPage({ products }: ReportsPageProps) {
+export function ReportsPage({ products, onUpdateProduct }: ReportsPageProps) {
   const currentYear = new Date().getFullYear()
   const [selectedYear, setSelectedYear] = useState(currentYear.toString())
+  const [editingSale, setEditingSale] = useState<SoldUnit | null>(null)
+  const [editingFinalPrice, setEditingFinalPrice] = useState('')
+  const [editingSaleDate, setEditingSaleDate] = useState('')
 
   const years = useMemo(() => {
     const yearsSet = new Set<number>()
@@ -142,6 +166,93 @@ export function ReportsPage({ products }: ReportsPageProps) {
     })
     return worst
   }, [monthlyStats])
+
+  const soldUnits = useMemo(() => {
+    const units: SoldUnit[] = []
+    products.forEach(product => {
+      const vatRate = (product.vatRate || 23) as VatRate
+      const priceNet = Number(product.priceNet) || calculateNetPrice(Number(product.price || 0), vatRate)
+      const salePrice = product.salePrice || calculateSalePrice(priceNet, vatRate)
+
+      ;(product.statuses || []).forEach((status, index) => {
+        if (status === 'sold' || status === 'sold-discount') {
+          const discountPercent = product.discounts?.[index] || 0
+          const finalPrice = status === 'sold'
+            ? salePrice
+            : calculateDiscountedPrice(salePrice, discountPercent)
+
+          units.push({
+            productId: product.id,
+            productName: product.name,
+            barcode: product.barcode,
+            brand: product.brand || '',
+            unitIndex: index,
+            salePrice,
+            discountPercent,
+            finalPrice,
+            saleDate: product.updatedAt || '',
+            status: status as 'sold' | 'sold-discount'
+          })
+        }
+      })
+    })
+    return units.sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime())
+  }, [products])
+
+  const filteredSoldUnits = useMemo(() => {
+    return soldUnits.filter(unit => {
+      if (!unit.saleDate) return false
+      return new Date(unit.saleDate).getFullYear().toString() === selectedYear
+    })
+  }, [soldUnits, selectedYear])
+
+  const handleOpenEdit = (unit: SoldUnit) => {
+    setEditingSale(unit)
+    setEditingFinalPrice(unit.finalPrice.toFixed(2))
+    setEditingSaleDate(unit.saleDate ? new Date(unit.saleDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0])
+  }
+
+  const handleSaveEdit = () => {
+    if (!editingSale || !onUpdateProduct) return
+    const product = products.find(p => p.id === editingSale.productId)
+    if (!product) return
+
+    const newFinalPrice = parseFloat(editingFinalPrice) || editingSale.finalPrice
+    const newDiscountPercent = editingSale.salePrice > 0
+      ? Math.max(0, Math.min(100, ((editingSale.salePrice - newFinalPrice) / editingSale.salePrice) * 100))
+      : 0
+
+    const newStatuses = [...(product.statuses || [])]
+    const newDiscounts = [...(product.discounts || [])]
+    newStatuses[editingSale.unitIndex] = (newDiscountPercent > 0.01 ? 'sold-discount' : 'sold') as ProductStatus
+    newDiscounts[editingSale.unitIndex] = newDiscountPercent
+
+    onUpdateProduct({
+      ...product,
+      statuses: newStatuses as ProductStatus[],
+      discounts: newDiscounts,
+      updatedAt: editingSaleDate ? new Date(editingSaleDate).toISOString() : product.updatedAt
+    })
+    setEditingSale(null)
+  }
+
+  const handleDeleteSale = (unit: SoldUnit) => {
+    if (!onUpdateProduct) return
+    const product = products.find(p => p.id === unit.productId)
+    if (!product) return
+
+    const newStatuses = [...(product.statuses || [])]
+    const newDiscounts = [...(product.discounts || [])]
+    newStatuses[unit.unitIndex] = 'available' as ProductStatus
+    newDiscounts[unit.unitIndex] = 0
+
+    onUpdateProduct({
+      ...product,
+      statuses: newStatuses as ProductStatus[],
+      discounts: newDiscounts,
+      updatedAt: new Date().toISOString()
+    })
+  }
 
   return (
     <motion.div
@@ -328,6 +439,150 @@ export function ReportsPage({ products }: ReportsPageProps) {
           </div>
         </div>
       </div>
+
+      <Separator />
+
+      {/* Szczegóły Sprzedaży */}
+      <div>
+        <h2 className="text-xl font-semibold mb-4">Szczegóły Sprzedaży ({selectedYear})</h2>
+        {filteredSoldUnits.length === 0 ? (
+          <Card className="border-dashed">
+            <CardContent className="py-8 text-center text-muted-foreground">
+              Brak sprzedanych produktów w roku {selectedYear}
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="border rounded-xl overflow-hidden bg-card">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left p-3 font-medium">Data</th>
+                    <th className="text-left p-3 font-medium">Produkt</th>
+                    <th className="text-left p-3 font-medium">Marka</th>
+                    <th className="text-right p-3 font-medium">Cena Sprzedaży</th>
+                    <th className="text-right p-3 font-medium">Rabat</th>
+                    <th className="text-right p-3 font-medium">Cena Końcowa</th>
+                    <th className="text-right p-3 font-medium">Akcje</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredSoldUnits.map((unit, idx) => (
+                    <tr key={`${unit.productId}-${unit.unitIndex}-${idx}`} className="border-t hover:bg-muted/30 transition-colors">
+                      <td className="p-3 text-muted-foreground">
+                        {unit.saleDate ? new Date(unit.saleDate).toLocaleDateString('pl-PL') : '—'}
+                      </td>
+                      <td className="p-3">
+                        <div className="font-medium">{unit.productName}</div>
+                        <div className="text-xs text-muted-foreground font-mono">{unit.barcode}</div>
+                      </td>
+                      <td className="p-3 text-muted-foreground">{unit.brand}</td>
+                      <td className="p-3 text-right">{unit.salePrice.toFixed(2)} zł</td>
+                      <td className="p-3 text-right">
+                        {unit.discountPercent > 0 ? (
+                          <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100">
+                            -{unit.discountPercent.toFixed(1)}%
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="p-3 text-right font-semibold text-green-600">{unit.finalPrice.toFixed(2)} zł</td>
+                      <td className="p-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleOpenEdit(unit)}
+                            title="Edytuj sprzedaż"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => {
+                              if (window.confirm(`Czy na pewno cofnąć sprzedaż "${unit.productName}"?\nStatus sztuki wróci do "Dostępny".`)) {
+                                handleDeleteSale(unit)
+                              }
+                            }}
+                            title="Cofnij sprzedaż"
+                          >
+                            <Trash className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-muted/50 font-bold border-t-2">
+                  <tr>
+                    <td colSpan={5} className="p-3">RAZEM {selectedYear}</td>
+                    <td className="p-3 text-right text-green-600">
+                      {filteredSoldUnits.reduce((sum, u) => sum + u.finalPrice, 0).toFixed(2)} zł
+                    </td>
+                    <td className="p-3"></td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Dialog edycji sprzedaży */}
+      <Dialog open={!!editingSale} onOpenChange={(open) => { if (!open) setEditingSale(null) }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edytuj Sprzedaż</DialogTitle>
+          </DialogHeader>
+          {editingSale && (
+            <div className="space-y-4 py-4">
+              <div className="p-3 bg-muted/50 rounded-lg space-y-1">
+                <p className="font-medium">{editingSale.productName}</p>
+                <p className="text-sm text-muted-foreground font-mono">{editingSale.barcode}</p>
+                <p className="text-sm">Cena sprzedaży: <span className="font-medium">{editingSale.salePrice.toFixed(2)} zł</span></p>
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="editFinalPrice">Cena końcowa (zł)</Label>
+                <Input
+                  id="editFinalPrice"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={editingFinalPrice}
+                  onChange={(e) => setEditingFinalPrice(e.target.value)}
+                  placeholder={editingSale.salePrice.toFixed(2)}
+                />
+                {editingFinalPrice && parseFloat(editingFinalPrice) > 0 && parseFloat(editingFinalPrice) < editingSale.salePrice && (
+                  <p className="text-xs text-purple-600">
+                    Rabat: {Math.max(0, ((editingSale.salePrice - parseFloat(editingFinalPrice)) / editingSale.salePrice) * 100).toFixed(1)}%
+                  </p>
+                )}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="editSaleDate">Data sprzedaży</Label>
+                <Input
+                  id="editSaleDate"
+                  type="date"
+                  value={editingSaleDate}
+                  onChange={(e) => setEditingSaleDate(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingSale(null)}>Anuluj</Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={!editingFinalPrice || parseFloat(editingFinalPrice) <= 0}
+            >
+              Zapisz Zmiany
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   )
 }

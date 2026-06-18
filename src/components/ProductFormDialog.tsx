@@ -58,6 +58,7 @@ export function ProductFormDialog({
     priceGross: '',
     vatRate: 23 as VatRate,
     priceMode: 'gross' as 'net' | 'gross', // czy użytkownik wpisuje netto czy brutto
+    salePrice: '',
     quantity: '1',
     purchaseDate: new Date().toISOString().split('T')[0],
     notes: '',
@@ -87,6 +88,7 @@ export function ProductFormDialog({
           priceGross: priceGross.toFixed(2),
           vatRate: vatRate,
           priceMode: 'gross',
+          salePrice: (existingProduct.salePrice || calculateSalePrice(priceNet, vatRate)).toFixed(2),
           quantity: existingProduct.quantity.toString(),
           purchaseDate: existingProduct.purchaseDate,
           notes: existingProduct.notes || '',
@@ -104,6 +106,7 @@ export function ProductFormDialog({
           priceGross: '',
           vatRate: 23,
           priceMode: 'gross',
+          salePrice: '',
           quantity: '1',
           purchaseDate: new Date().toISOString().split('T')[0],
           notes: '',
@@ -128,14 +131,16 @@ export function ProductFormDialog({
       setFormData(prev => ({
         ...prev,
         priceGross: value,
-        priceNet: price > 0 ? netPrice.toFixed(2) : ''
+        priceNet: price > 0 ? netPrice.toFixed(2) : '',
+        salePrice: price > 0 ? calculateSalePrice(netPrice, prev.vatRate).toFixed(2) : ''
       }))
     } else {
       const grossPrice = calculateGrossPrice(price, formData.vatRate)
       setFormData(prev => ({
         ...prev,
         priceNet: value,
-        priceGross: price > 0 ? grossPrice.toFixed(2) : ''
+        priceGross: price > 0 ? grossPrice.toFixed(2) : '',
+        salePrice: price > 0 ? calculateSalePrice(price, prev.vatRate).toFixed(2) : ''
       }))
     }
   }
@@ -149,10 +154,10 @@ export function ProductFormDialog({
     setFormData(prev => {
       if (prev.priceMode === 'gross') {
         const netPrice = calculateNetPrice(basePrice, newVat)
-        return { ...prev, vatRate: newVat, priceNet: basePrice > 0 ? netPrice.toFixed(2) : '' }
+        return { ...prev, vatRate: newVat, priceNet: basePrice > 0 ? netPrice.toFixed(2) : '', salePrice: basePrice > 0 ? calculateSalePrice(netPrice, newVat).toFixed(2) : '' }
       } else {
         const grossPrice = calculateGrossPrice(basePrice, newVat)
-        return { ...prev, vatRate: newVat, priceGross: basePrice > 0 ? grossPrice.toFixed(2) : '' }
+        return { ...prev, vatRate: newVat, priceGross: basePrice > 0 ? grossPrice.toFixed(2) : '', salePrice: basePrice > 0 ? calculateSalePrice(basePrice, newVat).toFixed(2) : '' }
       }
     })
   }
@@ -161,9 +166,10 @@ export function ProductFormDialog({
     e.preventDefault()
     const priceGross = parseFloat(formData.priceGross) || 0
     const priceNet = parseFloat(formData.priceNet) || 0
+    const salePrice = parseFloat(formData.salePrice) || 0
     
-    // Walidacja - cena brutto jest wymagana i musi być większa od 0
-    if (!formData.barcode || !formData.name || !formData.brand || priceGross <= 0) {
+    // Walidacja - cena brutto i cena sprzedaży są wymagane
+    if (!formData.barcode || !formData.name || !formData.brand || priceGross <= 0 || salePrice <= 0) {
       return
     }
     
@@ -177,7 +183,7 @@ export function ProductFormDialog({
       priceNet: priceNet,
       priceGross: priceGross,
       vatRate: formData.vatRate,
-      salePrice: calculateSalePrice(priceNet, formData.vatRate),
+      salePrice: salePrice,
       quantity: parseInt(formData.quantity) || 1,
       purchaseDate: formData.purchaseDate,
       statuses: Array(parseInt(formData.quantity) || 1).fill(formData.initialStatus),
@@ -374,14 +380,25 @@ export function ProductFormDialog({
                   </div>
                 </div>
 
-                {formData.priceNet && (
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-sm">
-                    <span className="text-green-700">Cena sprzedaży (marża 80% od netto): </span>
-                    <span className="font-bold text-green-800">
-                      {calculateSalePrice(parseFloat(formData.priceNet) || 0, formData.vatRate).toFixed(2)} zł
-                    </span>
-                  </div>
-                )}
+                <div className="grid gap-2">
+                  <Label htmlFor="salePrice">Cena Sprzedaży (dla klienta) *</Label>
+                  <Input
+                    id="salePrice"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.salePrice}
+                    onChange={(e) => setFormData(prev => ({ ...prev, salePrice: e.target.value }))}
+                    placeholder="0.00"
+                    required
+                    className="h-11 font-medium"
+                  />
+                  {formData.priceNet && (
+                    <p className="text-xs text-muted-foreground">
+                      Sugestia (marża 80%): {calculateSalePrice(parseFloat(formData.priceNet) || 0, formData.vatRate).toFixed(2)} zł
+                    </p>
+                  )}
+                </div>
               </CardContent>
             </Card>
 

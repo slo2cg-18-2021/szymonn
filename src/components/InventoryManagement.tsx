@@ -159,7 +159,7 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
                 return (
                   <div className="text-sm space-y-2 p-3 bg-muted/50 rounded-lg">
                     <p>Cena zakupu: <span className="font-medium">{Number(selectedProduct.price).toFixed(2)} zł</span></p>
-                    <p>Cena sprzedaży (marża 80% od netto): <span className="font-bold text-green-600">{salePrice.toFixed(2)} zł</span></p>
+                    <p>Cena sprzedaży: <span className="font-bold text-green-600">{salePrice.toFixed(2)} zł</span></p>
                   </div>
                 )
               }
@@ -326,7 +326,7 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
                   </div>
                   <div className="text-sm mt-2 space-y-1">
                     <p>Cena zakupu: <span className="font-medium">{Number(selectedProduct.price).toFixed(2)} zł</span></p>
-                    <p>Cena sprzedaży (marża 80% od netto): <span className="font-medium text-green-600">{(() => {
+                    <p>Cena sprzedaży: <span className="font-medium text-green-600">{(() => {
                       const vatRate = (selectedProduct.vatRate || 23) as VatRate
                       const priceNet = Number(selectedProduct.priceNet) || calculateNetPrice(Number(selectedProduct.price), vatRate)
                       return (selectedProduct.salePrice || calculateSalePrice(priceNet, vatRate)).toFixed(2)

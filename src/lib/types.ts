@@ -98,6 +98,12 @@ export const calculateDiscountedPrice = (salePrice: number, discountPercent: num
   return salePrice * (1 - discountPercent / 100)
 }
 
+// Oblicz procent rabatu na podstawie ceny sprzedaży i ceny końcowej
+export const calculateDiscountPercent = (salePrice: number, finalPrice: number): number => {
+  if (salePrice <= 0) return 0
+  return Math.max(0, Math.min(100, ((salePrice - finalPrice) / salePrice) * 100))
+}
+
 // Statusy które oznaczają aktywny produkt (dostępny do użycia)
 export const ACTIVE_STATUSES: ProductStatus[] = ['available', 'in-use']
 
