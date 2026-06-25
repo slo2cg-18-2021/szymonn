@@ -15,11 +15,12 @@ import {
   CaretLeft,
   CaretRight,
   Scissors,
-  PencilSimple
+  PencilSimple,
+  Wallet
 } from '@phosphor-icons/react'
 import { useIsMobile } from '@/hooks/use-mobile'
 
-export type PageType = 'add' | 'edit' | 'inventory' | 'products' | 'reports' | 'settings'
+export type PageType = 'add' | 'edit' | 'inventory' | 'products' | 'reports' | 'settings' | 'budget'
 
 interface AdminLayoutProps {
   children: React.ReactNode
@@ -71,6 +72,12 @@ const navItems: NavItem[] = [
     label: 'Ustawienia', 
     icon: <Gear className="w-5 h-5" />,
     description: 'Konfiguracja aplikacji'
+  },
+  {
+    id: 'budget',
+    label: 'Planer Budżetowy',
+    icon: <Wallet className="w-5 h-5" />,
+    description: 'Przychody, koszty i wynik finansowy'
   },
 ]
 

@@ -8,6 +8,7 @@ import { EditProductPage } from '@/components/pages/EditProductPage'
 import { ProductsPage } from '@/components/pages/ProductsPage'
 import { ReportsPage } from '@/components/pages/ReportsPage'
 import { SettingsPage } from '@/components/pages/SettingsPage'
+import { BudgetPlannerPage } from '@/components/pages/BudgetPlannerPage'
 import { InventoryManagement } from '@/components/InventoryManagement'
 import { ProductEditDialog } from '@/components/ProductEditDialog'
 import { ProductEditFullDialog } from '@/components/ProductEditFullDialog'
@@ -472,6 +473,8 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
         )
       case 'reports':
         return <ReportsPage products={products || []} onUpdateProduct={handleUpdateProduct} />
+      case 'budget':
+        return <BudgetPlannerPage />
       case 'settings':
         return (
           <SettingsPage 
