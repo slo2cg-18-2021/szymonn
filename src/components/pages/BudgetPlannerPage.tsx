@@ -911,13 +911,32 @@ export function BudgetPlannerPage() {
       return stored ? JSON.parse(stored) : {}
     } catch { return {} }
   })
+
+  // Sync a single changed month to the API in the background
+  const syncMonthToApi = useCallback((key: string, month: MonthlyBudget) => {
+    fetch('/api/budget', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'save_month', monthKey: key, incomes: month.incomes, costs: month.costs, note: month.note }),
+    }).catch(() => { /* silent — data already in localStorage */ })
+  }, [])
+
   const setBudgetData = useCallback((updater: BudgetData | ((prev: BudgetData) => BudgetData)) => {
     setBudgetDataState(prev => {
       const next = typeof updater === 'function' ? updater(prev ?? {}) : updater
       try { localStorage.setItem('budget-planner-v1', JSON.stringify(next)) } catch {}
+      // Find which key(s) changed and sync those to API
+      if (typeof updater === 'function') {
+        const prevKeys = Object.keys(prev ?? {})
+        const nextKeys = Object.keys(next)
+        const changed = nextKeys.filter(k => JSON.stringify(next[k]) !== JSON.stringify((prev ?? {})[k]))
+        changed.forEach(k => syncMonthToApi(k, next[k]))
+        // Also handle deleted keys (not needed yet but future-proof)
+        prevKeys.filter(k => !next[k])
+      }
       return next
     })
-  }, [])
+  }, [syncMonthToApi])
 
   const [limits, setLimitsState] = useState<BudgetLimits>(() => {
     try {
@@ -929,8 +948,31 @@ export function BudgetPlannerPage() {
     setLimitsState(prev => {
       const next = typeof updater === 'function' ? updater(prev ?? {}) : updater
       try { localStorage.setItem('budget-limits-v1', JSON.stringify(next)) } catch {}
+      fetch('/api/budget', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'save_limits', limits: next }),
+      }).catch(() => {})
       return next
     })
+  }, [])
+
+  // On mount: load from API and merge (API takes precedence over localStorage)
+  useEffect(() => {
+    fetch('/api/budget')
+      .then(r => r.ok ? r.json() : null)
+      .then(json => {
+        if (!json) return
+        if (json.data && Object.keys(json.data).length > 0) {
+          setBudgetDataState(json.data)
+          try { localStorage.setItem('budget-planner-v1', JSON.stringify(json.data)) } catch {}
+        }
+        if (json.limits && Object.keys(json.limits).length > 0) {
+          setLimitsState(json.limits)
+          try { localStorage.setItem('budget-limits-v1', JSON.stringify(json.limits)) } catch {}
+        }
+      })
+      .catch(() => { /* offline / no DB — localStorage fallback already loaded */ })
   }, [])
 
   const [limitsDialogOpen, setLimitsDialogOpen] = useState(false)

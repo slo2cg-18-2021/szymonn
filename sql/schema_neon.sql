@@ -54,3 +54,18 @@ BEGIN
     ALTER TABLE products ADD COLUMN gamma TEXT;
   END IF;
 END $$;
+
+-- Budget planner tables
+CREATE TABLE IF NOT EXISTS budget_months (
+  month_key TEXT PRIMARY KEY,         -- e.g. "2026-07"
+  incomes   JSONB NOT NULL DEFAULT '[]',
+  costs     JSONB NOT NULL DEFAULT '[]',
+  note      TEXT  NOT NULL DEFAULT '',
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS budget_limits (
+  id        INT  PRIMARY KEY DEFAULT 1,
+  limits    JSONB NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
