@@ -1,5 +1,4 @@
-import { useState, useMemo, useRef, useEffect } from 'react'
-import { useKV } from '@github/spark/hooks'
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -905,8 +905,33 @@ export function BudgetPlannerPage() {
   const [selectedYear, setSelectedYear] = useState(currentYear)
   const [activeTab, setActiveTab] = useState('annual')
 
-  const [budgetData, setBudgetData] = useKV<BudgetData>('budget-planner-v1', {})
-  const [limits, setLimits] = useKV<BudgetLimits>('budget-limits-v1', {})
+  const [budgetData, setBudgetDataState] = useState<BudgetData>(() => {
+    try {
+      const stored = localStorage.getItem('budget-planner-v1')
+      return stored ? JSON.parse(stored) : {}
+    } catch { return {} }
+  })
+  const setBudgetData = useCallback((updater: BudgetData | ((prev: BudgetData) => BudgetData)) => {
+    setBudgetDataState(prev => {
+      const next = typeof updater === 'function' ? updater(prev ?? {}) : updater
+      try { localStorage.setItem('budget-planner-v1', JSON.stringify(next)) } catch {}
+      return next
+    })
+  }, [])
+
+  const [limits, setLimitsState] = useState<BudgetLimits>(() => {
+    try {
+      const stored = localStorage.getItem('budget-limits-v1')
+      return stored ? JSON.parse(stored) : {}
+    } catch { return {} }
+  })
+  const setLimits = useCallback((updater: BudgetLimits | ((prev: BudgetLimits) => BudgetLimits)) => {
+    setLimitsState(prev => {
+      const next = typeof updater === 'function' ? updater(prev ?? {}) : updater
+      try { localStorage.setItem('budget-limits-v1', JSON.stringify(next)) } catch {}
+      return next
+    })
+  }, [])
 
   const [limitsDialogOpen, setLimitsDialogOpen] = useState(false)
   const [incomeDialogOpen, setIncomeDialogOpen] = useState(false)
@@ -917,6 +942,7 @@ export function BudgetPlannerPage() {
   const [costDialogMonth, setCostDialogMonth] = useState(1)
   const [editingCost, setEditingCost] = useState<BudgetCost | null>(null)
   const [costForm, setCostForm] = useState<Partial<BudgetCost>>({})
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'cost' | 'income'; month: number; id: string } | null>(null)
 
   const safeData = budgetData ?? {}
   const safeLimits = limits ?? {}
@@ -1003,7 +1029,8 @@ export function BudgetPlannerPage() {
     setMonthData(incomeDialogMonth, { ...md, incomes: editingIncome ? md.incomes.map(i => i.id === editingIncome.id ? item : i) : [...md.incomes, item] })
     setIncomeDialogOpen(false)
   }
-  const handleDeleteIncome = (month: number, id: string) => { const md = getMonthData(month); setMonthData(month, { ...md, incomes: md.incomes.filter(i => i.id !== id) }) }
+  const handleDeleteIncome = (month: number, id: string) => { setDeleteConfirm({ type: 'income', month, id }) }
+  const doDeleteIncome = (month: number, id: string) => { const md = getMonthData(month); setMonthData(month, { ...md, incomes: md.incomes.filter(i => i.id !== id) }) }
   const toggleIncomePaid = (month: number, id: string) => { const md = getMonthData(month); setMonthData(month, { ...md, incomes: md.incomes.map(i => i.id === id ? { ...i, paid: !i.paid } : i) }) }
 
   // ─── Cost handlers ─────────────────────────────────────────────────────────
@@ -1021,7 +1048,8 @@ export function BudgetPlannerPage() {
     setMonthData(costDialogMonth, { ...md, costs: editingCost ? md.costs.map(c => c.id === editingCost.id ? item : c) : [...md.costs, item] })
     setCostDialogOpen(false)
   }
-  const handleDeleteCost = (month: number, id: string) => { const md = getMonthData(month); setMonthData(month, { ...md, costs: md.costs.filter(c => c.id !== id) }) }
+  const handleDeleteCost = (month: number, id: string) => { setDeleteConfirm({ type: 'cost', month, id }) }
+  const doDeleteCost = (month: number, id: string) => { const md = getMonthData(month); setMonthData(month, { ...md, costs: md.costs.filter(c => c.id !== id) }) }
   const toggleCostPaid = (month: number, id: string) => { const md = getMonthData(month); setMonthData(month, { ...md, costs: md.costs.map(c => c.id === id ? { ...c, paid: !c.paid } : c) }) }
   const handleNoteChange = (month: number, note: string) => { const md = getMonthData(month); setMonthData(month, { ...md, note }) }
 
@@ -1118,6 +1146,33 @@ export function BudgetPlannerPage() {
           <DialogFooter><Button variant="outline" onClick={() => setCostDialogOpen(false)}>Anuluj</Button><Button onClick={handleSaveCost} disabled={!costForm.contractor?.trim()}>Zapisz</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={!!deleteConfirm} onOpenChange={open => { if (!open) setDeleteConfirm(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Potwierdź usunięcie</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteConfirm?.type === 'cost'
+                ? 'Czy na pewno chcesz usunąć ten koszt? Tej operacji nie można cofnąć.'
+                : 'Czy na pewno chcesz usunąć ten przychód? Tej operacji nie można cofnąć.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setDeleteConfirm(null)}>Anuluj</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (!deleteConfirm) return
+                if (deleteConfirm.type === 'cost') doDeleteCost(deleteConfirm.month, deleteConfirm.id)
+                else doDeleteIncome(deleteConfirm.month, deleteConfirm.id)
+                setDeleteConfirm(null)
+              }}
+            >
+              Usuń
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   )
 }
