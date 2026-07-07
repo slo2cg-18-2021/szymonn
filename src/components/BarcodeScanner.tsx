@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Barcode, Camera, X } from '@phosphor-icons/react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Html5Qrcode } from 'html5-qrcode'
+import { toast } from 'sonner'
 
 interface BarcodeScannerProps {
   onScan: (barcode: string) => void
@@ -17,11 +18,14 @@ export function BarcodeScanner({ onScan, disabled, forceStopCamera }: BarcodeSca
   const [isScanning, setIsScanning] = useState(false)
   const [isCameraActive, setIsCameraActive] = useState(false)
   const [cameraError, setCameraError] = useState<string>('')
+  const [isCapturing, setIsCapturing] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const scannerDivRef = useRef<HTMLDivElement>(null)
   const isStoppingRef = useRef(false)
+  const armedRef = useRef(false)
+  const captureTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
 
   // Force stop camera when dialog opens
   useEffect(() => {
@@ -55,6 +59,27 @@ export function BarcodeScanner({ onScan, disabled, forceStopCamera }: BarcodeSca
     setIsCameraActive(false)
     setCameraError('')
     isStoppingRef.current = false
+    armedRef.current = false
+    setIsCapturing(false)
+    if (captureTimeoutRef.current) {
+      clearTimeout(captureTimeoutRef.current)
+      captureTimeoutRef.current = undefined
+    }
+  }
+
+  const handleCapture = () => {
+    if (!isCameraActive || disabled) return
+    armedRef.current = true
+    setIsCapturing(true)
+
+    if (captureTimeoutRef.current) clearTimeout(captureTimeoutRef.current)
+    captureTimeoutRef.current = setTimeout(() => {
+      if (armedRef.current) {
+        armedRef.current = false
+        setIsCapturing(false)
+        toast.error('Nie wykryto kodu w kadrze. Wyceluj dokładniej i spróbuj ponownie.')
+      }
+    }, 2500)
   }
 
   const startCamera = async () => {
@@ -94,7 +119,14 @@ export function BarcodeScanner({ onScan, disabled, forceStopCamera }: BarcodeSca
         { facingMode: 'environment' },
         config,
         async (decodedText) => {
-          // Stop camera first, then call onScan
+          // Ignoruj automatyczne wykrycie – skan liczy się dopiero po naciśnięciu przycisku migawki
+          if (!armedRef.current) return
+          armedRef.current = false
+          if (captureTimeoutRef.current) {
+            clearTimeout(captureTimeoutRef.current)
+            captureTimeoutRef.current = undefined
+          }
+          setIsCapturing(false)
           await stopCamera()
           onScan(decodedText)
         },
@@ -185,6 +217,24 @@ export function BarcodeScanner({ onScan, disabled, forceStopCamera }: BarcodeSca
                 ref={scannerDivRef}
                 className="rounded-lg overflow-hidden border-2 border-accent"
               />
+
+              <p className="text-sm text-muted-foreground text-center mt-3">
+                {isCapturing ? 'Szukam kodu w kadrze…' : 'Wyceluj kod kreskowy i naciśnij przycisk, aby zrobić zdjęcie'}
+              </p>
+
+              <div className="flex justify-center py-3">
+                <button
+                  type="button"
+                  onClick={handleCapture}
+                  disabled={disabled || isCapturing}
+                  aria-label="Zrób zdjęcie i zeskanuj kod"
+                  className="w-16 h-16 rounded-full bg-white border-4 border-muted-foreground/40 shadow-lg flex items-center justify-center transition-transform active:scale-90 disabled:opacity-60"
+                >
+                  <span
+                    className={`w-11 h-11 rounded-full border-2 border-muted-foreground/30 ${isCapturing ? 'bg-accent animate-pulse' : 'bg-white'}`}
+                  />
+                </button>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>

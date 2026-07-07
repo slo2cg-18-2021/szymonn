@@ -581,7 +581,8 @@ function BudgetVsPlanTable({ costs, limits }: { costs: BudgetCost[]; limits: Bud
         <CardTitle className="text-sm flex items-center gap-2"><Target className="w-4 h-4 text-primary" />Plan vs. Rzeczywistość</CardTitle>
       </CardHeader>
       <CardContent className="p-0 pb-2">
-        <table className="w-full text-xs">
+        <div className="overflow-x-auto">
+        <table className="w-full text-xs min-w-[520px]">
           <thead className="bg-muted/60">
             <tr>
               <th className="text-left px-4 py-2 font-medium">Kategoria</th>
@@ -612,6 +613,7 @@ function BudgetVsPlanTable({ costs, limits }: { costs: BudgetCost[]; limits: Bud
             ))}
           </tbody>
         </table>
+        </div>
       </CardContent>
     </Card>
   )
@@ -666,8 +668,9 @@ function UnpaidView({ year, safeData, onToggleIncomePaid, onToggleCostPaid }: {
           {unpaidIncomes.length === 0 ? (
             <p className="text-center py-8 text-muted-foreground text-sm">Brak nieopłaconych przychodów ✓</p>
           ) : (
-            <ScrollArea className="max-h-64">
-              <table className="w-full text-xs">
+            <div className="overflow-x-auto">
+            <div className="overflow-y-auto max-h-64">
+              <table className="w-full text-xs min-w-[640px]">
                 <thead className="bg-muted/60 sticky top-0 z-10">
                   <tr><th className="text-left px-3 py-2">Miesiąc</th><th className="text-left px-2 py-2">Nr faktury</th><th className="text-left px-2 py-2">Kontrahent</th><th className="text-right px-2 py-2">Brutto</th><th className="text-left px-2 py-2">Data</th><th className="text-left px-2 py-2">Opis</th><th className="text-center px-2 py-2">Zap.</th></tr>
                 </thead>
@@ -688,7 +691,8 @@ function UnpaidView({ year, safeData, onToggleIncomePaid, onToggleCostPaid }: {
                   <tr><td colSpan={3} className="px-3 py-2 font-bold">Suma zaległości</td><td className="px-2 py-2 text-right font-bold text-orange-600">{totalUnpaidIncome.toFixed(2)} zł</td><td colSpan={3} /></tr>
                 </tfoot>
               </table>
-            </ScrollArea>
+            </div>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -701,8 +705,9 @@ function UnpaidView({ year, safeData, onToggleIncomePaid, onToggleCostPaid }: {
           {unpaidCosts.length === 0 ? (
             <p className="text-center py-8 text-muted-foreground text-sm">Brak nieopłaconych kosztów ✓</p>
           ) : (
-            <ScrollArea className="max-h-64">
-              <table className="w-full text-xs">
+            <div className="overflow-x-auto">
+            <div className="overflow-y-auto max-h-64">
+              <table className="w-full text-xs min-w-[640px]">
                 <thead className="bg-muted/60 sticky top-0 z-10">
                   <tr><th className="text-left px-3 py-2">Miesiąc</th><th className="text-left px-2 py-2">Kategoria</th><th className="text-left px-2 py-2">Kontrahent</th><th className="text-right px-2 py-2">Brutto</th><th className="text-left px-2 py-2">Data</th><th className="text-left px-2 py-2">Opis</th><th className="text-center px-2 py-2">Zap.</th></tr>
                 </thead>
@@ -723,7 +728,8 @@ function UnpaidView({ year, safeData, onToggleIncomePaid, onToggleCostPaid }: {
                   <tr><td colSpan={3} className="px-3 py-2 font-bold">Suma zaległości</td><td className="px-2 py-2 text-right font-bold text-red-600">{totalUnpaidCosts.toFixed(2)} zł</td><td colSpan={3} /></tr>
                 </tfoot>
               </table>
-            </ScrollArea>
+            </div>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -749,8 +755,9 @@ function IncomeTable({ incomes, onAdd, onAddSimple, onEdit, onDelete, onTogglePa
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <ScrollArea className="max-h-72">
-          <table className="w-full text-xs">
+        <div className="overflow-x-auto">
+        <div className="overflow-y-auto max-h-72">
+          <table className="w-full text-xs min-w-[760px]">
             <thead className="bg-muted/60 sticky top-0 z-10">
               <tr><th className="text-left px-3 py-2 font-medium">Nr faktury</th><th className="text-left px-2 py-2 font-medium">Kontrahent</th><th className="text-right px-2 py-2 font-medium">Netto</th><th className="text-center px-2 py-2 font-medium">VAT</th><th className="text-right px-2 py-2 font-medium">Brutto</th><th className="text-left px-2 py-2 font-medium">Data</th><th className="text-left px-2 py-2 font-medium">Opis</th><th className="text-center px-2 py-2 font-medium">Zap.</th><th className="px-2 py-2 w-16"></th></tr>
             </thead>
@@ -781,7 +788,8 @@ function IncomeTable({ incomes, onAdd, onAddSimple, onEdit, onDelete, onTogglePa
               </tfoot>
             )}
           </table>
-        </ScrollArea>
+        </div>
+        </div>
       </CardContent>
     </Card>
   )
@@ -805,8 +813,9 @@ function CostTable({ costs, onAdd, onAddSimple, onEdit, onDelete, onTogglePaid, 
         </div>
       </CardHeader>
       <CardContent className="p-0">
-        <ScrollArea className="max-h-72">
-          <table className="w-full text-xs">
+        <div className="overflow-x-auto">
+        <div className="overflow-y-auto max-h-72">
+          <table className="w-full text-xs min-w-[760px]">
             <thead className="bg-muted/60 sticky top-0 z-10">
               <tr><th className="text-left px-3 py-2 font-medium">Kategoria</th><th className="text-left px-2 py-2 font-medium">Kontrahent</th><th className="text-right px-2 py-2 font-medium">Netto</th><th className="text-center px-2 py-2 font-medium">VAT</th><th className="text-right px-2 py-2 font-medium">Brutto</th><th className="text-left px-2 py-2 font-medium">Data</th><th className="text-left px-2 py-2 font-medium">Opis</th><th className="text-center px-2 py-2 font-medium">Zap.</th><th className="px-2 py-2 w-16"></th></tr>
             </thead>
@@ -837,7 +846,8 @@ function CostTable({ costs, onAdd, onAddSimple, onEdit, onDelete, onTogglePaid, 
               </tfoot>
             )}
           </table>
-        </ScrollArea>
+        </div>
+        </div>
       </CardContent>
     </Card>
   )
@@ -1032,7 +1042,7 @@ function AnnualSummary({ year, monthStats, totals, onExport }: {
       <Card>
         <CardHeader className="pb-2 pt-4"><CardTitle className="text-sm">Roczny planer budżetowy – {year}</CardTitle></CardHeader>
         <CardContent className="p-0">
-          <ScrollArea className="w-full">
+          <div className="overflow-x-auto">
             <div className="min-w-[1000px]">
               <table className="w-full text-xs">
                 <thead className="bg-muted/60 sticky top-0 z-10">
@@ -1068,7 +1078,7 @@ function AnnualSummary({ year, monthStats, totals, onExport }: {
                 </tfoot>
               </table>
             </div>
-          </ScrollArea>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -213,7 +213,8 @@ export function SalesReportDialog({ products }: SalesReportDialogProps) {
           <div>
             <h3 className="text-lg font-semibold mb-4">Podsumowanie Miesięczne</h3>
             <div className="border rounded-lg overflow-hidden">
-              <table className="w-full text-sm">
+              <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-[560px]">
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="text-left p-3 font-medium">Miesiąc</th>
@@ -243,6 +244,7 @@ export function SalesReportDialog({ products }: SalesReportDialogProps) {
                   })}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         </div>
