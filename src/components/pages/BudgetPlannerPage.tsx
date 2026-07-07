@@ -379,7 +379,28 @@ function SimpleIncomeForm({ form, onChange }: {
         </datalist>
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <div className="space-y-1 col-span-2">
+        <div className="space-y-1">
+          <Label>Kwota netto (zł)</Label>
+          <Input
+            type="number" min="0" step="0.01" placeholder="0.00"
+            value={form.netAmount || ''}
+            onChange={e => {
+              const net = parseFloat(e.target.value) || 0
+              onChange({ ...form, netAmount: net, grossAmount: calcGross(net, form.vatRate ?? 'Zw.') })
+            }}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label>VAT %</Label>
+          <Select value={form.vatRate ?? 'Zw.'} onValueChange={v => {
+            const vat = v as VatOption
+            onChange({ ...form, vatRate: vat, grossAmount: calcGross(form.netAmount ?? 0, vat) })
+          }}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{VAT_OPTIONS.map(v => <SelectItem key={v} value={v}>{v === 'Zw.' ? 'Zw.' : `${v}%`}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
           <Label>Kwota brutto (zł) *</Label>
           <Input
             type="number" min="0" step="0.01" placeholder="0.00"
@@ -388,17 +409,8 @@ function SimpleIncomeForm({ form, onChange }: {
               const gross = parseFloat(e.target.value) || 0
               onChange({ ...form, grossAmount: gross, netAmount: calcNet(gross, form.vatRate ?? 'Zw.') })
             }}
+            className="font-medium"
           />
-        </div>
-        <div className="space-y-1">
-          <Label>VAT %</Label>
-          <Select value={form.vatRate ?? 'Zw.'} onValueChange={v => {
-            const vat = v as VatOption
-            onChange({ ...form, vatRate: vat, netAmount: calcNet(form.grossAmount ?? 0, vat) })
-          }}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{VAT_OPTIONS.map(v => <SelectItem key={v} value={v}>{v === 'Zw.' ? 'Zw.' : `${v}%`}</SelectItem>)}</SelectContent>
-          </Select>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -452,7 +464,28 @@ function SimpleCostForm({ form, onChange }: {
         </datalist>
       </div>
       <div className="grid grid-cols-3 gap-3">
-        <div className="space-y-1 col-span-2">
+        <div className="space-y-1">
+          <Label>Kwota netto (zł)</Label>
+          <Input
+            type="number" min="0" step="0.01" placeholder="0.00"
+            value={form.netAmount || ''}
+            onChange={e => {
+              const net = parseFloat(e.target.value) || 0
+              onChange({ ...form, netAmount: net, grossAmount: calcGross(net, form.vatRate ?? '23') })
+            }}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label>VAT %</Label>
+          <Select value={form.vatRate ?? '23'} onValueChange={v => {
+            const vat = v as VatOption
+            onChange({ ...form, vatRate: vat, grossAmount: calcGross(form.netAmount ?? 0, vat) })
+          }}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{VAT_OPTIONS.map(v => <SelectItem key={v} value={v}>{v === 'Zw.' ? 'Zw.' : `${v}%`}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1">
           <Label>Kwota brutto (zł) *</Label>
           <Input
             type="number" min="0" step="0.01" placeholder="0.00"
@@ -461,17 +494,8 @@ function SimpleCostForm({ form, onChange }: {
               const gross = parseFloat(e.target.value) || 0
               onChange({ ...form, grossAmount: gross, netAmount: calcNet(gross, form.vatRate ?? '23') })
             }}
+            className="font-medium"
           />
-        </div>
-        <div className="space-y-1">
-          <Label>VAT %</Label>
-          <Select value={form.vatRate ?? '23'} onValueChange={v => {
-            const vat = v as VatOption
-            onChange({ ...form, vatRate: vat, netAmount: calcNet(form.grossAmount ?? 0, vat) })
-          }}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{VAT_OPTIONS.map(v => <SelectItem key={v} value={v}>{v === 'Zw.' ? 'Zw.' : `${v}%`}</SelectItem>)}</SelectContent>
-          </Select>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
