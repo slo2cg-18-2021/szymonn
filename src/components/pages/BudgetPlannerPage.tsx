@@ -20,7 +20,7 @@ import {
 import {
   Plus, Pencil, Trash, TrendUp, TrendDown, CurrencyCircleDollar,
   Receipt, ChartBar, Download, Warning, RepeatOnce, Copy,
-  StickyNote, Target, ArrowLeft, ArrowRight,
+  StickyNote, Target, ArrowLeft, ArrowRight, Coins,
 } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -59,6 +59,7 @@ const CATEGORY_COLORS: Record<CostCategory, string> = {
 
 interface BudgetIncome {
   id: string
+  entryType?: 'invoice' | 'simple'
   invoiceNo: string
   contractor: string
   netAmount: number
@@ -72,6 +73,7 @@ interface BudgetIncome {
 
 interface BudgetCost {
   id: string
+  entryType?: 'invoice' | 'simple'
   category: CostCategory
   contractor: string
   netAmount: number
@@ -123,6 +125,11 @@ const VAT_OPTIONS: VatOption[] = ['0', '5', '8', '23', 'Zw.']
 function calcGross(net: number, vat: VatOption): number {
   if (vat === 'Zw.' || vat === '0') return parseFloat(net.toFixed(2))
   return parseFloat((net * (1 + parseInt(vat) / 100)).toFixed(2))
+}
+
+function calcNet(gross: number, vat: VatOption): number {
+  if (vat === 'Zw.' || vat === '0') return parseFloat(gross.toFixed(2))
+  return parseFloat((gross / (1 + parseInt(vat) / 100)).toFixed(2))
 }
 
 function fmtPLN(amount: number): string {
@@ -234,7 +241,7 @@ function IncomeForm({ form, onChange, contractorSuggestions }: {
       <div className="grid grid-cols-3 gap-3">
         <div className="space-y-1">
           <Label>Kw. Netto (zł)</Label>
-          <Input type="number" min="0" step="0.01" value={form.netAmount ?? 0} onChange={e => updateNet(parseFloat(e.target.value) || 0)} />
+          <Input type="number" min="0" step="0.01" placeholder="0.00" value={form.netAmount || ''} onChange={e => updateNet(parseFloat(e.target.value) || 0)} />
         </div>
         <div className="space-y-1">
           <Label>VAT %</Label>
@@ -245,7 +252,7 @@ function IncomeForm({ form, onChange, contractorSuggestions }: {
         </div>
         <div className="space-y-1">
           <Label>Kw. Brutto (zł)</Label>
-          <Input type="number" min="0" step="0.01" value={form.grossAmount ?? 0} onChange={e => onChange({ ...form, grossAmount: parseFloat(e.target.value) || 0 })} />
+          <Input type="number" min="0" step="0.01" placeholder="0.00" value={form.grossAmount || ''} onChange={e => onChange({ ...form, grossAmount: parseFloat(e.target.value) || 0 })} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -307,7 +314,7 @@ function CostForm({ form, onChange, contractorSuggestions }: {
       <div className="grid grid-cols-3 gap-3">
         <div className="space-y-1">
           <Label>Kw. Netto (zł)</Label>
-          <Input type="number" min="0" step="0.01" value={form.netAmount ?? 0} onChange={e => updateNet(parseFloat(e.target.value) || 0)} />
+          <Input type="number" min="0" step="0.01" placeholder="0.00" value={form.netAmount || ''} onChange={e => updateNet(parseFloat(e.target.value) || 0)} />
         </div>
         <div className="space-y-1">
           <Label>VAT %</Label>
@@ -318,7 +325,7 @@ function CostForm({ form, onChange, contractorSuggestions }: {
         </div>
         <div className="space-y-1">
           <Label>Kw. Brutto (zł)</Label>
-          <Input type="number" min="0" step="0.01" value={form.grossAmount ?? 0} onChange={e => onChange({ ...form, grossAmount: parseFloat(e.target.value) || 0 })} />
+          <Input type="number" min="0" step="0.01" placeholder="0.00" value={form.grossAmount || ''} onChange={e => onChange({ ...form, grossAmount: parseFloat(e.target.value) || 0 })} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -342,6 +349,141 @@ function CostForm({ form, onChange, contractorSuggestions }: {
             <RepeatOnce className="w-3.5 h-3.5 text-primary" />
             Cykliczny (co miesiąc)
           </Label>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── SIMPLE ENTRY FORMS ──────────────────────────────────────────────────────
+
+const SIMPLE_INCOME_SUGGESTIONS = ['Utarg z dnia', 'Płatność gotówkowa', 'Napiwek', 'Sprzedaż gotówkowa', 'Zaliczka', 'Zwrot']
+const SIMPLE_COST_SUGGESTIONS   = ['Zakup gotówkowy', 'Opłata gotówkowa', 'Paliwo', 'Materiały', 'Drobne zakupy']
+
+function SimpleIncomeForm({ form, onChange }: {
+  form: Partial<BudgetIncome>; onChange: (f: Partial<BudgetIncome>) => void
+}) {
+  return (
+    <div className="grid gap-3 py-2">
+      <div className="space-y-1">
+        <Label>Opis / Źródło *</Label>
+        <Input
+          value={form.description ?? ''}
+          onChange={e => onChange({ ...form, description: e.target.value })}
+          placeholder="np. Utarg z dnia, Napiwek..."
+          list="simple-inc-suggestions"
+          autoComplete="off"
+        />
+        <datalist id="simple-inc-suggestions">
+          {SIMPLE_INCOME_SUGGESTIONS.map(s => <option key={s} value={s} />)}
+        </datalist>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="space-y-1 col-span-2">
+          <Label>Kwota brutto (zł) *</Label>
+          <Input
+            type="number" min="0" step="0.01" placeholder="0.00"
+            value={form.grossAmount || ''}
+            onChange={e => {
+              const gross = parseFloat(e.target.value) || 0
+              onChange({ ...form, grossAmount: gross, netAmount: calcNet(gross, form.vatRate ?? 'Zw.') })
+            }}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label>VAT %</Label>
+          <Select value={form.vatRate ?? 'Zw.'} onValueChange={v => {
+            const vat = v as VatOption
+            onChange({ ...form, vatRate: vat, netAmount: calcNet(form.grossAmount ?? 0, vat) })
+          }}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{VAT_OPTIONS.map(v => <SelectItem key={v} value={v}>{v === 'Zw.' ? 'Zw.' : `${v}%`}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <Label>Data *</Label>
+          <Input type="date" value={form.date ?? ''} onChange={e => onChange({ ...form, date: e.target.value })} />
+        </div>
+        <div className="flex items-end pb-0.5">
+          <div className="flex items-center gap-2">
+            <Checkbox id="s-inc-paid" checked={form.paid ?? true} onCheckedChange={v => onChange({ ...form, paid: !!v })} />
+            <Label htmlFor="s-inc-paid" className="cursor-pointer">Zapłacono</Label>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function SimpleCostForm({ form, onChange }: {
+  form: Partial<BudgetCost>; onChange: (f: Partial<BudgetCost>) => void
+}) {
+  return (
+    <div className="grid gap-3 py-2">
+      <div className="space-y-1">
+        <Label>Kategoria</Label>
+        <Select value={form.category ?? 'Koszty operacyjne'} onValueChange={v => onChange({ ...form, category: v as CostCategory })}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            {COST_CATEGORIES.map(cat => (
+              <SelectItem key={cat} value={cat}>
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: CATEGORY_COLORS[cat] }} />
+                  {cat}
+                </div>
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-1">
+        <Label>Opis *</Label>
+        <Input
+          value={form.description ?? ''}
+          onChange={e => onChange({ ...form, description: e.target.value })}
+          placeholder="np. Zakup materiałów, Paliwo..."
+          list="simple-cost-suggestions"
+          autoComplete="off"
+        />
+        <datalist id="simple-cost-suggestions">
+          {SIMPLE_COST_SUGGESTIONS.map(s => <option key={s} value={s} />)}
+        </datalist>
+      </div>
+      <div className="grid grid-cols-3 gap-3">
+        <div className="space-y-1 col-span-2">
+          <Label>Kwota brutto (zł) *</Label>
+          <Input
+            type="number" min="0" step="0.01" placeholder="0.00"
+            value={form.grossAmount || ''}
+            onChange={e => {
+              const gross = parseFloat(e.target.value) || 0
+              onChange({ ...form, grossAmount: gross, netAmount: calcNet(gross, form.vatRate ?? '23') })
+            }}
+          />
+        </div>
+        <div className="space-y-1">
+          <Label>VAT %</Label>
+          <Select value={form.vatRate ?? '23'} onValueChange={v => {
+            const vat = v as VatOption
+            onChange({ ...form, vatRate: vat, netAmount: calcNet(form.grossAmount ?? 0, vat) })
+          }}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>{VAT_OPTIONS.map(v => <SelectItem key={v} value={v}>{v === 'Zw.' ? 'Zw.' : `${v}%`}</SelectItem>)}</SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1">
+          <Label>Data *</Label>
+          <Input type="date" value={form.date ?? ''} onChange={e => onChange({ ...form, date: e.target.value })} />
+        </div>
+        <div className="flex items-end pb-0.5">
+          <div className="flex items-center gap-2">
+            <Checkbox id="s-cost-paid" checked={form.paid ?? true} onCheckedChange={v => onChange({ ...form, paid: !!v })} />
+            <Label htmlFor="s-cost-paid" className="cursor-pointer">Zapłacono</Label>
+          </div>
         </div>
       </div>
     </div>
@@ -567,8 +709,8 @@ function UnpaidView({ year, safeData, onToggleIncomePaid, onToggleCostPaid }: {
 
 // ─── INCOME TABLE ─────────────────────────────────────────────────────────────
 
-function IncomeTable({ incomes, onAdd, onEdit, onDelete, onTogglePaid }: {
-  incomes: BudgetIncome[]; onAdd: () => void; onEdit: (i: BudgetIncome) => void; onDelete: (id: string) => void; onTogglePaid: (id: string) => void
+function IncomeTable({ incomes, onAdd, onAddSimple, onEdit, onDelete, onTogglePaid }: {
+  incomes: BudgetIncome[]; onAdd: () => void; onAddSimple: () => void; onEdit: (i: BudgetIncome) => void; onDelete: (id: string) => void; onTogglePaid: (id: string) => void
 }) {
   const total = incomes.reduce((s, i) => s + i.grossAmount, 0)
   return (
@@ -576,7 +718,10 @@ function IncomeTable({ incomes, onAdd, onEdit, onDelete, onTogglePaid }: {
       <CardHeader className="pb-2 pt-4 px-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm flex items-center gap-2"><Receipt className="w-4 h-4 text-green-600" />Lista przychodów</CardTitle>
-          <Button size="sm" variant="outline" onClick={onAdd} className="h-7 text-xs gap-1"><Plus className="w-3 h-3" /> Dodaj</Button>
+          <div className="flex gap-1">
+            <Button size="sm" variant="outline" onClick={onAdd} className="h-7 text-xs gap-1"><Receipt className="w-3 h-3" /> Faktura</Button>
+            <Button size="sm" variant="outline" onClick={onAddSimple} className="h-7 text-xs gap-1 text-green-700 border-green-300 hover:bg-green-50 dark:hover:bg-green-950"><Coins className="w-3 h-3" /> Szybki wpis</Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -589,7 +734,12 @@ function IncomeTable({ incomes, onAdd, onEdit, onDelete, onTogglePaid }: {
               {incomes.length === 0 && <tr><td colSpan={9} className="text-center py-8 text-muted-foreground">Brak przychodów. Kliknij „Dodaj".</td></tr>}
               {incomes.map(inc => (
                 <tr key={inc.id} className={cn('border-t hover:bg-muted/30 transition-colors', !inc.paid && 'bg-orange-50/20 dark:bg-orange-900/5')}>
-                  <td className="px-3 py-1.5 font-mono text-muted-foreground"><div className="flex items-center gap-1">{inc.recurring && <RepeatOnce className="w-3 h-3 text-primary flex-shrink-0" title="Cykliczny" />}{inc.invoiceNo}</div></td>
+                  <td className="px-3 py-1.5 font-mono text-muted-foreground">
+                    {inc.entryType === 'simple'
+                      ? <div className="flex items-center gap-1"><Coins className="w-3 h-3 text-green-600 flex-shrink-0" /><span className="text-green-700 dark:text-green-400 font-sans font-normal text-[11px]">gotówka</span></div>
+                      : <div className="flex items-center gap-1">{inc.recurring && <RepeatOnce className="w-3 h-3 text-primary flex-shrink-0" title="Cykliczny" />}{inc.invoiceNo}</div>
+                    }
+                  </td>
                   <td className="px-2 py-1.5 font-medium">{inc.contractor}</td>
                   <td className="px-2 py-1.5 text-right">{inc.netAmount.toFixed(2)}</td>
                   <td className="px-2 py-1.5 text-center text-muted-foreground">{inc.vatRate === 'Zw.' ? 'Zw.' : `${inc.vatRate}%`}</td>
@@ -615,8 +765,8 @@ function IncomeTable({ incomes, onAdd, onEdit, onDelete, onTogglePaid }: {
 
 // ─── COST TABLE ───────────────────────────────────────────────────────────────
 
-function CostTable({ costs, onAdd, onEdit, onDelete, onTogglePaid, limits }: {
-  costs: BudgetCost[]; onAdd: () => void; onEdit: (c: BudgetCost) => void; onDelete: (id: string) => void; onTogglePaid: (id: string) => void; limits: BudgetLimits
+function CostTable({ costs, onAdd, onAddSimple, onEdit, onDelete, onTogglePaid, limits }: {
+  costs: BudgetCost[]; onAdd: () => void; onAddSimple: () => void; onEdit: (c: BudgetCost) => void; onDelete: (id: string) => void; onTogglePaid: (id: string) => void; limits: BudgetLimits
 }) {
   const total = costs.reduce((s, c) => s + c.grossAmount, 0)
   return (
@@ -624,7 +774,10 @@ function CostTable({ costs, onAdd, onEdit, onDelete, onTogglePaid, limits }: {
       <CardHeader className="pb-2 pt-4 px-4">
         <div className="flex items-center justify-between">
           <CardTitle className="text-sm flex items-center gap-2"><ChartBar className="w-4 h-4 text-red-600" />Lista kosztów</CardTitle>
-          <Button size="sm" variant="outline" onClick={onAdd} className="h-7 text-xs gap-1"><Plus className="w-3 h-3" /> Dodaj</Button>
+          <div className="flex gap-1">
+            <Button size="sm" variant="outline" onClick={onAdd} className="h-7 text-xs gap-1"><Receipt className="w-3 h-3" /> Faktura</Button>
+            <Button size="sm" variant="outline" onClick={onAddSimple} className="h-7 text-xs gap-1 text-red-700 border-red-300 hover:bg-red-50 dark:hover:bg-red-950"><Coins className="w-3 h-3" /> Szybki wpis</Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -641,7 +794,7 @@ function CostTable({ costs, onAdd, onEdit, onDelete, onTogglePaid, limits }: {
                 const overLimit = limit !== undefined && catTotal > limit
                 return (
                   <tr key={cost.id} className={cn('border-t hover:bg-muted/30 transition-colors', !cost.paid && 'bg-red-50/20 dark:bg-red-900/5', overLimit && 'bg-red-100/30 dark:bg-red-900/15')}>
-                    <td className="px-3 py-1.5"><div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: CATEGORY_COLORS[cost.category] }} />{cost.recurring && <RepeatOnce className="w-3 h-3 text-primary flex-shrink-0" title="Cykliczny" />}<span className="truncate max-w-[90px]">{cost.category}</span>{overLimit && <Warning className="w-3 h-3 text-red-500 flex-shrink-0" title="Przekroczono limit!" />}</div></td>
+                    <td className="px-3 py-1.5"><div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: CATEGORY_COLORS[cost.category] }} />{cost.entryType === 'simple' && <Coins className="w-3 h-3 text-orange-500 flex-shrink-0" title="Szybki wpis" />}{cost.recurring && <RepeatOnce className="w-3 h-3 text-primary flex-shrink-0" title="Cykliczny" />}<span className="truncate max-w-[90px]">{cost.category}</span>{overLimit && <Warning className="w-3 h-3 text-red-500 flex-shrink-0" title="Przekroczono limit!" />}</div></td>
                     <td className="px-2 py-1.5 font-medium">{cost.contractor}</td>
                     <td className="px-2 py-1.5 text-right">{cost.netAmount.toFixed(2)}</td>
                     <td className="px-2 py-1.5 text-center text-muted-foreground">{cost.vatRate === 'Zw.' ? 'Zw.' : `${cost.vatRate}%`}</td>
@@ -671,12 +824,12 @@ function CostTable({ costs, onAdd, onEdit, onDelete, onTogglePaid, limits }: {
 interface MonthlyViewProps {
   year: number; month: number; monthName: string; monthData: MonthlyBudget
   allMonthStats: MonthStat[]; limits: BudgetLimits
-  onAddIncome: () => void; onEditIncome: (i: BudgetIncome) => void; onDeleteIncome: (id: string) => void; onToggleIncomePaid: (id: string) => void
-  onAddCost: () => void; onEditCost: (c: BudgetCost) => void; onDeleteCost: (id: string) => void; onToggleCostPaid: (id: string) => void
+  onAddIncome: () => void; onAddIncomeSimple: () => void; onEditIncome: (i: BudgetIncome) => void; onDeleteIncome: (id: string) => void; onToggleIncomePaid: (id: string) => void
+  onAddCost: () => void; onAddCostSimple: () => void; onEditCost: (c: BudgetCost) => void; onDeleteCost: (id: string) => void; onToggleCostPaid: (id: string) => void
   onNoteChange: (n: string) => void; onExport: () => void; onCopyPrev: () => void; hasPrev: boolean
 }
 
-function MonthlyView({ year, month, monthName, monthData, allMonthStats, limits, onAddIncome, onEditIncome, onDeleteIncome, onToggleIncomePaid, onAddCost, onEditCost, onDeleteCost, onToggleCostPaid, onNoteChange, onExport, onCopyPrev, hasPrev }: MonthlyViewProps) {
+function MonthlyView({ year, month, monthName, monthData, allMonthStats, limits, onAddIncome, onAddIncomeSimple, onEditIncome, onDeleteIncome, onToggleIncomePaid, onAddCost, onAddCostSimple, onEditCost, onDeleteCost, onToggleCostPaid, onNoteChange, onExport, onCopyPrev, hasPrev }: MonthlyViewProps) {
   const totalIncome = monthData.incomes.reduce((s, i) => s + i.grossAmount, 0)
   const totalCosts  = monthData.costs.reduce((s, c) => s + c.grossAmount, 0)
   const profit      = totalIncome - totalCosts
@@ -799,8 +952,8 @@ function MonthlyView({ year, month, monthName, monthData, allMonthStats, limits,
       </Card>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <IncomeTable incomes={monthData.incomes} onAdd={onAddIncome} onEdit={onEditIncome} onDelete={onDeleteIncome} onTogglePaid={onToggleIncomePaid} />
-        <CostTable costs={monthData.costs} onAdd={onAddCost} onEdit={onEditCost} onDelete={onDeleteCost} onTogglePaid={onToggleCostPaid} limits={limits} />
+        <IncomeTable incomes={monthData.incomes} onAdd={onAddIncome} onAddSimple={onAddIncomeSimple} onEdit={onEditIncome} onDelete={onDeleteIncome} onTogglePaid={onToggleIncomePaid} />
+        <CostTable costs={monthData.costs} onAdd={onAddCost} onAddSimple={onAddCostSimple} onEdit={onEditCost} onDelete={onDeleteCost} onTogglePaid={onToggleCostPaid} limits={limits} />
       </div>
     </div>
   )
@@ -980,10 +1133,12 @@ export function BudgetPlannerPage() {
   const [incomeDialogMonth, setIncomeDialogMonth] = useState(1)
   const [editingIncome, setEditingIncome] = useState<BudgetIncome | null>(null)
   const [incomeForm, setIncomeForm] = useState<Partial<BudgetIncome>>({})
+  const [incomeDialogTab, setIncomeDialogTab] = useState<'invoice' | 'simple'>('invoice')
   const [costDialogOpen, setCostDialogOpen] = useState(false)
   const [costDialogMonth, setCostDialogMonth] = useState(1)
   const [editingCost, setEditingCost] = useState<BudgetCost | null>(null)
   const [costForm, setCostForm] = useState<Partial<BudgetCost>>({})
+  const [costDialogTab, setCostDialogTab] = useState<'invoice' | 'simple'>('invoice')
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'cost' | 'income'; month: number; id: string } | null>(null)
 
   const safeData = budgetData ?? {}
@@ -1060,16 +1215,33 @@ export function BudgetPlannerPage() {
   const openAddIncome = (month: number) => {
     const md = getMonthData(month)
     setIncomeDialogMonth(month); setEditingIncome(null)
+    setIncomeDialogTab('invoice')
     setIncomeForm({ invoiceNo: makeInvoiceNo(selectedYear, month, md.incomes.length), contractor: '', netAmount: 0, vatRate: '23', grossAmount: 0, date: `${selectedYear}-${String(month).padStart(2, '0')}-01`, description: '', paid: false, recurring: false })
     setIncomeDialogOpen(true)
   }
-  const openEditIncome = (month: number, income: BudgetIncome) => { setIncomeDialogMonth(month); setEditingIncome(income); setIncomeForm({ ...income }); setIncomeDialogOpen(true) }
+  const openAddIncomeSimple = (month: number) => {
+    setIncomeDialogMonth(month); setEditingIncome(null)
+    setIncomeDialogTab('simple')
+    setIncomeForm({ invoiceNo: '', contractor: '', netAmount: 0, vatRate: 'Zw.', grossAmount: 0, date: `${selectedYear}-${String(month).padStart(2, '0')}-01`, description: '', paid: true, recurring: false })
+    setIncomeDialogOpen(true)
+  }
+  const openEditIncome = (month: number, income: BudgetIncome) => { setIncomeDialogMonth(month); setEditingIncome(income); setIncomeForm({ ...income }); setIncomeDialogTab(income.entryType === 'simple' ? 'simple' : 'invoice'); setIncomeDialogOpen(true) }
   const handleSaveIncome = () => {
-    if (!incomeForm.contractor?.trim() || !incomeForm.date) return
-    const md = getMonthData(incomeDialogMonth)
-    const item: BudgetIncome = { id: editingIncome?.id ?? genId(), invoiceNo: incomeForm.invoiceNo ?? '', contractor: incomeForm.contractor ?? '', netAmount: incomeForm.netAmount ?? 0, vatRate: incomeForm.vatRate ?? '23', grossAmount: incomeForm.grossAmount ?? calcGross(incomeForm.netAmount ?? 0, incomeForm.vatRate ?? '23'), date: incomeForm.date ?? '', description: incomeForm.description ?? '', paid: incomeForm.paid ?? false, recurring: incomeForm.recurring ?? false }
-    setMonthData(incomeDialogMonth, { ...md, incomes: editingIncome ? md.incomes.map(i => i.id === editingIncome.id ? item : i) : [...md.incomes, item] })
-    setIncomeDialogOpen(false)
+    if (incomeDialogTab === 'simple') {
+      if (!incomeForm.description?.trim() || !incomeForm.date || !((incomeForm.grossAmount ?? 0) > 0)) return
+      const md = getMonthData(incomeDialogMonth)
+      const gross = incomeForm.grossAmount ?? 0
+      const vat = incomeForm.vatRate ?? 'Zw.'
+      const item: BudgetIncome = { id: editingIncome?.id ?? genId(), entryType: 'simple', invoiceNo: '', contractor: '', netAmount: calcNet(gross, vat), vatRate: vat, grossAmount: gross, date: incomeForm.date ?? '', description: incomeForm.description ?? '', paid: incomeForm.paid ?? true, recurring: false }
+      setMonthData(incomeDialogMonth, { ...md, incomes: editingIncome ? md.incomes.map(i => i.id === editingIncome.id ? item : i) : [...md.incomes, item] })
+      setIncomeDialogOpen(false)
+    } else {
+      if (!incomeForm.contractor?.trim() || !incomeForm.date) return
+      const md = getMonthData(incomeDialogMonth)
+      const item: BudgetIncome = { id: editingIncome?.id ?? genId(), entryType: 'invoice', invoiceNo: incomeForm.invoiceNo ?? '', contractor: incomeForm.contractor ?? '', netAmount: incomeForm.netAmount ?? 0, vatRate: incomeForm.vatRate ?? '23', grossAmount: incomeForm.grossAmount ?? calcGross(incomeForm.netAmount ?? 0, incomeForm.vatRate ?? '23'), date: incomeForm.date ?? '', description: incomeForm.description ?? '', paid: incomeForm.paid ?? false, recurring: incomeForm.recurring ?? false }
+      setMonthData(incomeDialogMonth, { ...md, incomes: editingIncome ? md.incomes.map(i => i.id === editingIncome.id ? item : i) : [...md.incomes, item] })
+      setIncomeDialogOpen(false)
+    }
   }
   const handleDeleteIncome = (month: number, id: string) => { setDeleteConfirm({ type: 'income', month, id }) }
   const doDeleteIncome = (month: number, id: string) => { const md = getMonthData(month); setMonthData(month, { ...md, incomes: md.incomes.filter(i => i.id !== id) }) }
@@ -1079,16 +1251,33 @@ export function BudgetPlannerPage() {
 
   const openAddCost = (month: number) => {
     setCostDialogMonth(month); setEditingCost(null)
+    setCostDialogTab('invoice')
     setCostForm({ category: 'Koszty operacyjne', contractor: '', netAmount: 0, vatRate: '23', grossAmount: 0, date: `${selectedYear}-${String(month).padStart(2, '0')}-01`, description: '', paid: false, recurring: false })
     setCostDialogOpen(true)
   }
-  const openEditCost = (month: number, cost: BudgetCost) => { setCostDialogMonth(month); setEditingCost(cost); setCostForm({ ...cost }); setCostDialogOpen(true) }
+  const openAddCostSimple = (month: number) => {
+    setCostDialogMonth(month); setEditingCost(null)
+    setCostDialogTab('simple')
+    setCostForm({ category: 'Koszty operacyjne', contractor: '', netAmount: 0, vatRate: '23', grossAmount: 0, date: `${selectedYear}-${String(month).padStart(2, '0')}-01`, description: '', paid: true, recurring: false })
+    setCostDialogOpen(true)
+  }
+  const openEditCost = (month: number, cost: BudgetCost) => { setCostDialogMonth(month); setEditingCost(cost); setCostForm({ ...cost }); setCostDialogTab(cost.entryType === 'simple' ? 'simple' : 'invoice'); setCostDialogOpen(true) }
   const handleSaveCost = () => {
-    if (!costForm.contractor?.trim() || !costForm.date) return
-    const md = getMonthData(costDialogMonth)
-    const item: BudgetCost = { id: editingCost?.id ?? genId(), category: costForm.category ?? 'Koszty operacyjne', contractor: costForm.contractor ?? '', netAmount: costForm.netAmount ?? 0, vatRate: costForm.vatRate ?? '23', grossAmount: costForm.grossAmount ?? calcGross(costForm.netAmount ?? 0, costForm.vatRate ?? '23'), date: costForm.date ?? '', description: costForm.description ?? '', paid: costForm.paid ?? false, recurring: costForm.recurring ?? false }
-    setMonthData(costDialogMonth, { ...md, costs: editingCost ? md.costs.map(c => c.id === editingCost.id ? item : c) : [...md.costs, item] })
-    setCostDialogOpen(false)
+    if (costDialogTab === 'simple') {
+      if (!costForm.description?.trim() || !costForm.date || !((costForm.grossAmount ?? 0) > 0)) return
+      const md = getMonthData(costDialogMonth)
+      const gross = costForm.grossAmount ?? 0
+      const vat = costForm.vatRate ?? '23'
+      const item: BudgetCost = { id: editingCost?.id ?? genId(), entryType: 'simple', category: costForm.category ?? 'Koszty operacyjne', contractor: '', netAmount: calcNet(gross, vat), vatRate: vat, grossAmount: gross, date: costForm.date ?? '', description: costForm.description ?? '', paid: costForm.paid ?? true, recurring: false }
+      setMonthData(costDialogMonth, { ...md, costs: editingCost ? md.costs.map(c => c.id === editingCost.id ? item : c) : [...md.costs, item] })
+      setCostDialogOpen(false)
+    } else {
+      if (!costForm.contractor?.trim() || !costForm.date) return
+      const md = getMonthData(costDialogMonth)
+      const item: BudgetCost = { id: editingCost?.id ?? genId(), entryType: 'invoice', category: costForm.category ?? 'Koszty operacyjne', contractor: costForm.contractor ?? '', netAmount: costForm.netAmount ?? 0, vatRate: costForm.vatRate ?? '23', grossAmount: costForm.grossAmount ?? calcGross(costForm.netAmount ?? 0, costForm.vatRate ?? '23'), date: costForm.date ?? '', description: costForm.description ?? '', paid: costForm.paid ?? false, recurring: costForm.recurring ?? false }
+      setMonthData(costDialogMonth, { ...md, costs: editingCost ? md.costs.map(c => c.id === editingCost.id ? item : c) : [...md.costs, item] })
+      setCostDialogOpen(false)
+    }
   }
   const handleDeleteCost = (month: number, id: string) => { setDeleteConfirm({ type: 'cost', month, id }) }
   const doDeleteCost = (month: number, id: string) => { const md = getMonthData(month); setMonthData(month, { ...md, costs: md.costs.filter(c => c.id !== id) }) }
@@ -1159,8 +1348,8 @@ export function BudgetPlannerPage() {
             <TabsContent key={month} value={String(month)} className="mt-4">
               <MonthlyView
                 year={selectedYear} month={month} monthName={monthName} monthData={getMonthData(month)} allMonthStats={annualMonthStats} limits={safeLimits}
-                onAddIncome={() => openAddIncome(month)} onEditIncome={inc => openEditIncome(month, inc)} onDeleteIncome={id => handleDeleteIncome(month, id)} onToggleIncomePaid={id => toggleIncomePaid(month, id)}
-                onAddCost={() => openAddCost(month)} onEditCost={c => openEditCost(month, c)} onDeleteCost={id => handleDeleteCost(month, id)} onToggleCostPaid={id => toggleCostPaid(month, id)}
+                onAddIncome={() => openAddIncome(month)} onAddIncomeSimple={() => openAddIncomeSimple(month)} onEditIncome={inc => openEditIncome(month, inc)} onDeleteIncome={id => handleDeleteIncome(month, id)} onToggleIncomePaid={id => toggleIncomePaid(month, id)}
+                onAddCost={() => openAddCost(month)} onAddCostSimple={() => openAddCostSimple(month)} onEditCost={c => openEditCost(month, c)} onDeleteCost={id => handleDeleteCost(month, id)} onToggleCostPaid={id => toggleCostPaid(month, id)}
                 onNoteChange={note => handleNoteChange(month, note)}
                 onExport={() => exportMonthCSV(selectedYear, month, getMonthData(month))}
                 onCopyPrev={() => handleCopyPrevMonth(month)}
@@ -1176,16 +1365,44 @@ export function BudgetPlannerPage() {
       <Dialog open={incomeDialogOpen} onOpenChange={setIncomeDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>{editingIncome ? 'Edytuj przychód' : `Dodaj przychód – ${MONTH_NAMES[incomeDialogMonth - 1]} ${selectedYear}`}</DialogTitle></DialogHeader>
-          <IncomeForm form={incomeForm} onChange={setIncomeForm} contractorSuggestions={allContractors} />
-          <DialogFooter><Button variant="outline" onClick={() => setIncomeDialogOpen(false)}>Anuluj</Button><Button onClick={handleSaveIncome} disabled={!incomeForm.contractor?.trim()}>Zapisz</Button></DialogFooter>
+          <Tabs value={incomeDialogTab} onValueChange={v => setIncomeDialogTab(v as 'invoice' | 'simple')}>
+            <TabsList className="w-full">
+              <TabsTrigger value="invoice" className="flex-1 gap-1.5 text-xs"><Receipt className="w-3.5 h-3.5" />Faktura / przelew</TabsTrigger>
+              <TabsTrigger value="simple" className="flex-1 gap-1.5 text-xs"><Coins className="w-3.5 h-3.5" />Szybki wpis (gotówka)</TabsTrigger>
+            </TabsList>
+            <TabsContent value="invoice">
+              <IncomeForm form={incomeForm} onChange={setIncomeForm} contractorSuggestions={allContractors} />
+            </TabsContent>
+            <TabsContent value="simple">
+              <SimpleIncomeForm form={incomeForm} onChange={setIncomeForm} />
+            </TabsContent>
+          </Tabs>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIncomeDialogOpen(false)}>Anuluj</Button>
+            <Button onClick={handleSaveIncome} disabled={incomeDialogTab === 'invoice' ? !incomeForm.contractor?.trim() : (!incomeForm.description?.trim() || !((incomeForm.grossAmount ?? 0) > 0))}>Zapisz</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={costDialogOpen} onOpenChange={setCostDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader><DialogTitle>{editingCost ? 'Edytuj koszt' : `Dodaj koszt – ${MONTH_NAMES[costDialogMonth - 1]} ${selectedYear}`}</DialogTitle></DialogHeader>
-          <CostForm form={costForm} onChange={setCostForm} contractorSuggestions={allContractors} />
-          <DialogFooter><Button variant="outline" onClick={() => setCostDialogOpen(false)}>Anuluj</Button><Button onClick={handleSaveCost} disabled={!costForm.contractor?.trim()}>Zapisz</Button></DialogFooter>
+          <Tabs value={costDialogTab} onValueChange={v => setCostDialogTab(v as 'invoice' | 'simple')}>
+            <TabsList className="w-full">
+              <TabsTrigger value="invoice" className="flex-1 gap-1.5 text-xs"><Receipt className="w-3.5 h-3.5" />Faktura / przelew</TabsTrigger>
+              <TabsTrigger value="simple" className="flex-1 gap-1.5 text-xs"><Coins className="w-3.5 h-3.5" />Szybki wpis (gotówka)</TabsTrigger>
+            </TabsList>
+            <TabsContent value="invoice">
+              <CostForm form={costForm} onChange={setCostForm} contractorSuggestions={allContractors} />
+            </TabsContent>
+            <TabsContent value="simple">
+              <SimpleCostForm form={costForm} onChange={setCostForm} />
+            </TabsContent>
+          </Tabs>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCostDialogOpen(false)}>Anuluj</Button>
+            <Button onClick={handleSaveCost} disabled={costDialogTab === 'invoice' ? !costForm.contractor?.trim() : (!costForm.description?.trim() || !((costForm.grossAmount ?? 0) > 0))}>Zapisz</Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
