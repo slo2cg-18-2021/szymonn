@@ -75,7 +75,7 @@ export function ProductFormDialog({
     if (open) {
       if (existingProduct) {
         const priceGross = existingProduct.priceGross || existingProduct.price || 0
-        const vatRate = existingProduct.vatRate || 23
+        const vatRate = existingProduct.vatRate ?? 23
         const priceNet = existingProduct.priceNet || calculateNetPrice(priceGross, vatRate)
         
         setFormData({
@@ -122,7 +122,7 @@ export function ProductFormDialog({
     if (!availableCategories.includes(formData.category)) {
       setFormData(prev => ({ ...prev, category: availableCategories[0] || 'Inne' }))
     }
-  }, [formData.mainCategory, availableCategories])
+  }, [formData.mainCategory, formData.category, availableCategories])
 
   // Przeliczanie cen
   const handlePriceChange = (value: string, mode: 'net' | 'gross') => {

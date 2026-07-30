@@ -32,7 +32,7 @@ export function BarcodeScanner({ onScan, disabled, forceStopCamera }: BarcodeSca
     if (forceStopCamera && isCameraActive) {
       stopCamera()
     }
-  }, [forceStopCamera])
+  }, [forceStopCamera, isCameraActive])
 
   useEffect(() => {
     return () => {
@@ -98,7 +98,7 @@ export function BarcodeScanner({ onScan, disabled, forceStopCamera }: BarcodeSca
         try {
           await scannerRef.current.stop()
           scannerRef.current.clear()
-        } catch (e) {
+        } catch {
           console.log('Czyszczenie starego skanera')
         }
       }

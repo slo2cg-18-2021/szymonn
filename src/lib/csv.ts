@@ -1,4 +1,4 @@
-import { Product, ProductStatus, MainCategory, VatRate, calculateNetPrice, calculateSalePrice } from './types'
+import { Product, ProductStatus, MainCategory, VatRate, calculateNetPrice, calculateSalePrice, getProductGrossPrice, getProductNetPrice, getProductSalePrice, normalizeStatuses, normalizeStatusChangedAt, normalizeDiscounts } from './types'
 
 export function exportToCSV(products: Product[], filename: string = 'salon-inventory.csv') {
   const headers = [
@@ -15,6 +15,7 @@ export function exportToCSV(products: Product[], filename: string = 'salon-inven
     'Ilość',
     'Data zakupu',
     'Statusy',
+    'Daty zmian statusów',
     'Rabaty',
     'Notatki',
     'ID',
@@ -22,10 +23,13 @@ export function exportToCSV(products: Product[], filename: string = 'salon-inven
   ]
   
   const rows = products.map(product => {
-    const priceGross = product.priceGross || product.price || 0
-    const vatRate = (product.vatRate || 23) as VatRate
-    const priceNet = product.priceNet || calculateNetPrice(priceGross, vatRate)
-    const salePrice = product.salePrice || calculateSalePrice(priceNet, vatRate)
+    const priceGross = getProductGrossPrice(product)
+    const priceNet = getProductNetPrice(product)
+    const salePrice = getProductSalePrice(product)
+    const statuses = normalizeStatuses(product.statuses, product.quantity)
+    const statusChangedAt = normalizeStatusChangedAt(product.statusChangedAt, statuses, product.updatedAt)
+    const discounts = normalizeDiscounts(product.discounts, product.quantity)
+    const vatRate = product.vatRate ?? 23
     
     return [
       product.barcode || '',
@@ -40,8 +44,9 @@ export function exportToCSV(products: Product[], filename: string = 'salon-inven
       salePrice.toFixed(2),
       (product.quantity || 1).toString(),
       product.purchaseDate || '',
-      JSON.stringify(product.statuses || []),
-      JSON.stringify(product.discounts || []),
+      JSON.stringify(statuses),
+      JSON.stringify(statusChangedAt),
+      JSON.stringify(discounts),
       product.notes || '',
       product.id || '',
       product.updatedAt || ''
@@ -129,6 +134,20 @@ export function parseCSV(csvText: string): Partial<Product>[] {
       statuses = Array(quantity).fill('available')
     }
 
+    // Parsowanie dat zmian statusów poszczególnych sztuk
+    let statusChangedAt: (string | null)[] = []
+    const statusChangedAtRaw = getValue(['daty zmian statusów', 'statuschangedat', 'status changed at'])
+    if (statusChangedAtRaw) {
+      try {
+        const parsed = JSON.parse(statusChangedAtRaw)
+        if (Array.isArray(parsed)) {
+          statusChangedAt = parsed
+        }
+      } catch {
+        statusChangedAt = []
+      }
+    }
+
     // Parsowanie rabatów
     let discounts: number[] = []
     const discountsRaw = getValue(['rabaty', 'discounts'])
@@ -168,8 +187,10 @@ export function parseCSV(csvText: string): Partial<Product>[] {
       quantity: quantity,
       purchaseDate: getValue(['data zakupu', 'purchasedate', 'data']) || new Date().toISOString().split('T')[0],
       statuses: statuses,
+      statusChangedAt: statusChangedAt,
       discounts: discounts,
-      notes: getValue(['notatki', 'notes', 'uwagi'])
+      notes: getValue(['notatki', 'notes', 'uwagi']),
+      updatedAt: getValue(['aktualizacja', 'updatedat', 'updated at']) || undefined
     }
 
     // Walidacja - wymagane pola

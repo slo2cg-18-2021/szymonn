@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Product, ProductStatus, calculateSalePrice, calculateDiscountedPrice, calculateNetPrice, VatRate } from '@/lib/types'
+import { Product, ProductStatus, calculateDiscountedPrice, normalizeStatuses, normalizeStatusChangedAt, normalizeDiscounts, getProductGrossPrice, getProductSalePrice } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { 
   ChartBar, 
   TrendUp, 
@@ -51,6 +52,35 @@ interface MonthlyStats {
   purchasedValue: number
 }
 
+interface UsedUnit {
+  productId: string
+  productName: string
+  barcode: string
+  brand: string
+  unitIndex: number
+  usedDate: string
+}
+
+type UsedReportPeriod = 'day' | 'month' | 'year'
+
+const MONTH_NAMES = [
+  'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
+  'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'
+]
+
+const toDateKey = (value: string | Date): string => {
+  const date = value instanceof Date ? value : new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+const dateInputToIso = (date: string): string => {
+  return new Date(`${date}T12:00:00`).toISOString()
+}
+
 export function ReportsPage({ products, onUpdateProduct }: ReportsPageProps) {
   const currentYear = new Date().getFullYear()
   const [selectedYear, setSelectedYear] = useState(currentYear.toString())
@@ -58,6 +88,11 @@ export function ReportsPage({ products, onUpdateProduct }: ReportsPageProps) {
   const [editingFinalPrice, setEditingFinalPrice] = useState('')
   const [editingSaleDate, setEditingSaleDate] = useState('')
   const [expandedMonth, setExpandedMonth] = useState<string | null>(null)
+  const todayKey = toDateKey(new Date())
+  const [usedPeriod, setUsedPeriod] = useState<UsedReportPeriod>('month')
+  const [selectedUsedDay, setSelectedUsedDay] = useState(todayKey)
+  const [selectedUsedMonth, setSelectedUsedMonth] = useState(todayKey.slice(0, 7))
+  const [selectedUsedYear, setSelectedUsedYear] = useState(currentYear.toString())
 
   const years = useMemo(() => {
     const yearsSet = new Set<number>()
@@ -72,6 +107,12 @@ export function ReportsPage({ products, onUpdateProduct }: ReportsPageProps) {
         const year = new Date(p.updatedAt).getFullYear()
         if (!isNaN(year)) yearsSet.add(year)
       }
+      const statuses = normalizeStatuses(p.statuses, p.quantity)
+      normalizeStatusChangedAt(p.statusChangedAt, statuses, p.updatedAt).forEach(changedAt => {
+        if (!changedAt) return
+        const year = new Date(changedAt).getFullYear()
+        if (!isNaN(year)) yearsSet.add(year)
+      })
     })
     
     return Array.from(yearsSet).sort((a, b) => b - a)
@@ -79,14 +120,10 @@ export function ReportsPage({ products, onUpdateProduct }: ReportsPageProps) {
 
   const monthlyStats = useMemo(() => {
     const months: MonthlyStats[] = []
-    const monthNames = [
-      'Styczeń', 'Luty', 'Marzec', 'Kwiecień', 'Maj', 'Czerwiec',
-      'Lipiec', 'Sierpień', 'Wrzesień', 'Październik', 'Listopad', 'Grudzień'
-    ]
     
     for (let i = 0; i < 12; i++) {
       months.push({
-        month: monthNames[i],
+        month: MONTH_NAMES[i],
         monthKey: `${selectedYear}-${String(i + 1).padStart(2, '0')}`,
         soldCount: 0,
         soldValue: 0,
@@ -102,26 +139,28 @@ export function ReportsPage({ products, onUpdateProduct }: ReportsPageProps) {
         if (purchaseDate.getFullYear().toString() === selectedYear) {
           const monthIndex = purchaseDate.getMonth()
           months[monthIndex].purchasedCount += product.quantity || 1
-          months[monthIndex].purchasedValue += Number(product.price) * (product.quantity || 1)
+          months[monthIndex].purchasedValue += getProductGrossPrice(product) * (product.quantity || 1)
         }
       }
       
       // Sprzedaż
-      const vatRate = (product.vatRate || 23) as VatRate
-      const priceNet = Number(product.priceNet) || calculateNetPrice(Number(product.price), vatRate)
-      const salePrice = product.salePrice || calculateSalePrice(priceNet, vatRate)
+      const salePrice = getProductSalePrice(product)
       
-      ;(product.statuses || []).forEach((status, index) => {
-        if ((status === 'sold' || status === 'sold-discount') && product.updatedAt) {
-          const updateDate = new Date(product.updatedAt)
-          if (updateDate.getFullYear().toString() === selectedYear) {
-            const monthIndex = updateDate.getMonth()
+      const statuses = normalizeStatuses(product.statuses, product.quantity)
+      const statusChangedAt = normalizeStatusChangedAt(product.statusChangedAt, statuses, product.updatedAt)
+      const discounts = normalizeDiscounts(product.discounts, product.quantity)
+      statuses.forEach((status, index) => {
+        const saleDate = statusChangedAt[index]
+        if ((status === 'sold' || status === 'sold-discount') && saleDate) {
+          const soldAt = new Date(saleDate)
+          if (soldAt.getFullYear().toString() === selectedYear) {
+            const monthIndex = soldAt.getMonth()
             months[monthIndex].soldCount += 1
             
             if (status === 'sold') {
               months[monthIndex].soldValue += salePrice
             } else if (status === 'sold-discount') {
-              const discount = product.discounts?.[index] || 0
+              const discount = discounts[index]
               months[monthIndex].soldValue += calculateDiscountedPrice(salePrice, discount)
             }
           }
@@ -173,13 +212,14 @@ export function ReportsPage({ products, onUpdateProduct }: ReportsPageProps) {
   const soldUnits = useMemo(() => {
     const units: SoldUnit[] = []
     products.forEach(product => {
-      const vatRate = (product.vatRate || 23) as VatRate
-      const priceNet = Number(product.priceNet) || calculateNetPrice(Number(product.price || 0), vatRate)
-      const salePrice = product.salePrice || calculateSalePrice(priceNet, vatRate)
+      const salePrice = getProductSalePrice(product)
 
-      ;(product.statuses || []).forEach((status, index) => {
+      const statuses = normalizeStatuses(product.statuses, product.quantity)
+      const statusChangedAt = normalizeStatusChangedAt(product.statusChangedAt, statuses, product.updatedAt)
+      const discounts = normalizeDiscounts(product.discounts, product.quantity)
+      statuses.forEach((status, index) => {
         if (status === 'sold' || status === 'sold-discount') {
-          const discountPercent = product.discounts?.[index] || 0
+          const discountPercent = discounts[index]
           const finalPrice = status === 'sold'
             ? salePrice
             : calculateDiscountedPrice(salePrice, discountPercent)
@@ -193,7 +233,7 @@ export function ReportsPage({ products, onUpdateProduct }: ReportsPageProps) {
             salePrice,
             discountPercent,
             finalPrice,
-            saleDate: product.updatedAt || '',
+            saleDate: statusChangedAt[index] || '',
             status: status as 'sold' | 'sold-discount'
           })
         }
@@ -202,12 +242,80 @@ export function ReportsPage({ products, onUpdateProduct }: ReportsPageProps) {
     return units.sort((a, b) => new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime())
   }, [products])
 
-  const filteredSoldUnits = useMemo(() => {
-    return soldUnits.filter(unit => {
-      if (!unit.saleDate) return false
-      return new Date(unit.saleDate).getFullYear().toString() === selectedYear
+  const usedUnits = useMemo(() => {
+    const units: UsedUnit[] = []
+
+    products.forEach(product => {
+      const statuses = normalizeStatuses(product.statuses, product.quantity)
+      const statusChangedAt = normalizeStatusChangedAt(product.statusChangedAt, statuses, product.updatedAt)
+
+      statuses.forEach((status, index) => {
+        if (status !== 'used' || !statusChangedAt[index]) return
+
+        units.push({
+          productId: product.id,
+          productName: product.name,
+          barcode: product.barcode,
+          brand: product.brand || '',
+          unitIndex: index,
+          usedDate: statusChangedAt[index] as string
+        })
+      })
     })
-  }, [soldUnits, selectedYear])
+
+    return units.sort((a, b) => new Date(b.usedDate).getTime() - new Date(a.usedDate).getTime())
+  }, [products])
+
+  const filteredUsedUnits = useMemo(() => {
+    return usedUnits.filter(unit => {
+      const dateKey = toDateKey(unit.usedDate)
+      if (usedPeriod === 'day') return dateKey === selectedUsedDay
+      if (usedPeriod === 'month') return dateKey.slice(0, 7) === selectedUsedMonth
+      return dateKey.slice(0, 4) === selectedUsedYear
+    })
+  }, [usedUnits, usedPeriod, selectedUsedDay, selectedUsedMonth, selectedUsedYear])
+
+  const usedBreakdown = useMemo(() => {
+    const rows = new Map<string, { label: string; count: number }>()
+
+    filteredUsedUnits.forEach(unit => {
+      const dateKey = toDateKey(unit.usedDate)
+      let key: string
+      let label: string
+
+      if (usedPeriod === 'year') {
+        key = dateKey.slice(0, 7)
+        label = MONTH_NAMES[Number(dateKey.slice(5, 7)) - 1]
+      } else if (usedPeriod === 'month') {
+        key = dateKey
+        label = new Date(`${dateKey}T12:00:00`).toLocaleDateString('pl-PL', {
+          day: 'numeric',
+          weekday: 'long'
+        })
+      } else {
+        key = unit.productId
+        label = unit.productName
+      }
+
+      const row = rows.get(key)
+      rows.set(key, { label, count: (row?.count || 0) + 1 })
+    })
+
+    return Array.from(rows.entries())
+      .sort(([firstKey], [secondKey]) => firstKey.localeCompare(secondKey))
+      .map(([key, row]) => ({ key, ...row }))
+  }, [filteredUsedUnits, usedPeriod])
+
+  const usedPeriodLabel = useMemo(() => {
+    if (usedPeriod === 'day') {
+      return new Date(`${selectedUsedDay}T12:00:00`).toLocaleDateString('pl-PL')
+    }
+    if (usedPeriod === 'month') {
+      const [year, month] = selectedUsedMonth.split('-')
+      return `${MONTH_NAMES[Number(month) - 1]} ${year}`
+    }
+    return selectedUsedYear
+  }, [usedPeriod, selectedUsedDay, selectedUsedMonth, selectedUsedYear])
 
   const handleOpenEdit = (unit: SoldUnit) => {
     setEditingSale(unit)
@@ -225,16 +333,26 @@ export function ReportsPage({ products, onUpdateProduct }: ReportsPageProps) {
       ? Math.max(0, Math.min(100, ((editingSale.salePrice - newFinalPrice) / editingSale.salePrice) * 100))
       : 0
 
-    const newStatuses = [...(product.statuses || [])]
-    const newDiscounts = [...(product.discounts || [])]
+    const currentStatuses = normalizeStatuses(product.statuses, product.quantity)
+    const newStatuses = [...currentStatuses]
+    const newStatusChangedAt = normalizeStatusChangedAt(
+      product.statusChangedAt,
+      currentStatuses,
+      product.updatedAt
+    )
+    const newDiscounts = normalizeDiscounts(product.discounts, product.quantity)
     newStatuses[editingSale.unitIndex] = (newDiscountPercent > 0.01 ? 'sold-discount' : 'sold') as ProductStatus
+    newStatusChangedAt[editingSale.unitIndex] = editingSaleDate
+      ? dateInputToIso(editingSaleDate)
+      : editingSale.saleDate
     newDiscounts[editingSale.unitIndex] = newDiscountPercent
 
     onUpdateProduct({
       ...product,
       statuses: newStatuses as ProductStatus[],
+      statusChangedAt: newStatusChangedAt,
       discounts: newDiscounts,
-      updatedAt: editingSaleDate ? new Date(editingSaleDate).toISOString() : product.updatedAt
+      updatedAt: new Date().toISOString()
     })
     setEditingSale(null)
   }
@@ -244,14 +362,22 @@ export function ReportsPage({ products, onUpdateProduct }: ReportsPageProps) {
     const product = products.find(p => p.id === unit.productId)
     if (!product) return
 
-    const newStatuses = [...(product.statuses || [])]
-    const newDiscounts = [...(product.discounts || [])]
+    const currentStatuses = normalizeStatuses(product.statuses, product.quantity)
+    const newStatuses = [...currentStatuses]
+    const newStatusChangedAt = normalizeStatusChangedAt(
+      product.statusChangedAt,
+      currentStatuses,
+      product.updatedAt
+    )
+    const newDiscounts = normalizeDiscounts(product.discounts, product.quantity)
     newStatuses[unit.unitIndex] = 'available' as ProductStatus
+    newStatusChangedAt[unit.unitIndex] = new Date().toISOString()
     newDiscounts[unit.unitIndex] = 0
 
     onUpdateProduct({
       ...product,
       statuses: newStatuses as ProductStatus[],
+      statusChangedAt: newStatusChangedAt,
       discounts: newDiscounts,
       updatedAt: new Date().toISOString()
     })
@@ -268,10 +394,10 @@ export function ReportsPage({ products, onUpdateProduct }: ReportsPageProps) {
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold flex items-center gap-3">
             <ChartBar className="w-8 h-8" />
-            Raporty Sprzedaży
+            Raporty
           </h1>
           <p className="text-muted-foreground mt-1">
-            Szczegółowe statystyki sprzedaży i zakupów
+            Szczegółowe statystyki sprzedaży, zakupów i zużycia
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -415,7 +541,7 @@ export function ReportsPage({ products, onUpdateProduct }: ReportsPageProps) {
                   const hasData = month.soldCount > 0 || month.purchasedCount > 0
                   const isExpanded = expandedMonth === month.monthKey
                   const monthUnits = soldUnits.filter(u =>
-                    u.saleDate && u.saleDate.startsWith(month.monthKey)
+                    u.saleDate && toDateKey(u.saleDate).startsWith(month.monthKey)
                   )
                   return (
                     <>
@@ -556,6 +682,167 @@ export function ReportsPage({ products, onUpdateProduct }: ReportsPageProps) {
           </div>
         </div>
       </div>
+
+      <Separator />
+
+      {/* Raport zużytych produktów */}
+      <section className="space-y-4">
+        <div>
+          <h2 className="text-xl font-semibold mb-1">Raport Zużytych Produktów</h2>
+          <p className="text-sm text-muted-foreground">
+            Zestawienie sztuk oznaczonych statusem „Zużyty” według daty zmiany statusu
+          </p>
+        </div>
+
+        <div className="flex flex-col lg:flex-row lg:items-end gap-4">
+          <div className="grid gap-2 w-full sm:w-[360px]">
+            <Label>Zakres raportu</Label>
+            <Tabs value={usedPeriod} onValueChange={(value) => setUsedPeriod(value as UsedReportPeriod)}>
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="day">Dzienny</TabsTrigger>
+                <TabsTrigger value="month">Miesięczny</TabsTrigger>
+                <TabsTrigger value="year">Roczny</TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
+
+          <div className="grid gap-2 w-full sm:w-[220px]">
+            <Label htmlFor="used-report-period">Okres</Label>
+            {usedPeriod === 'day' && (
+              <Input
+                id="used-report-period"
+                type="date"
+                value={selectedUsedDay}
+                onChange={(event) => setSelectedUsedDay(event.target.value)}
+              />
+            )}
+            {usedPeriod === 'month' && (
+              <Input
+                id="used-report-period"
+                type="month"
+                value={selectedUsedMonth}
+                onChange={(event) => setSelectedUsedMonth(event.target.value)}
+              />
+            )}
+            {usedPeriod === 'year' && (
+              <Select value={selectedUsedYear} onValueChange={setSelectedUsedYear}>
+                <SelectTrigger id="used-report-period">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {years.map(year => (
+                    <SelectItem key={year} value={year.toString()}>{year}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <Package className="w-4 h-4" />
+                Zużyte sztuki
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{filteredUsedUnits.length}</div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Różne produkty</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">
+                {new Set(filteredUsedUnits.map(unit => unit.productId)).size}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">Wybrany okres</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-lg font-semibold break-words">{usedPeriodLabel}</div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(220px,0.7fr)_minmax(0,2fr)] gap-4 items-start">
+          <div className="border rounded-lg overflow-hidden bg-card">
+            <div className="p-4 border-b bg-muted/30">
+              <h3 className="font-semibold">Podsumowanie okresu</h3>
+            </div>
+            <table className="w-full text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left p-3 font-medium">
+                    {usedPeriod === 'year' ? 'Miesiąc' : usedPeriod === 'month' ? 'Dzień' : 'Produkt'}
+                  </th>
+                  <th className="text-right p-3 font-medium">Szt.</th>
+                </tr>
+              </thead>
+              <tbody>
+                {usedBreakdown.length > 0 ? usedBreakdown.map(row => (
+                  <tr key={row.key} className="border-t">
+                    <td className="p-3 capitalize">{row.label}</td>
+                    <td className="p-3 text-right font-semibold">{row.count}</td>
+                  </tr>
+                )) : (
+                  <tr className="border-t">
+                    <td colSpan={2} className="p-6 text-center text-muted-foreground">
+                      Brak zużytych produktów w tym okresie
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="border rounded-lg overflow-hidden bg-card">
+            <div className="p-4 border-b bg-muted/30">
+              <h3 className="font-semibold">Zużyte sztuki</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left p-3 font-medium">Data zużycia</th>
+                    <th className="text-left p-3 font-medium">Produkt</th>
+                    <th className="text-left p-3 font-medium">Marka</th>
+                    <th className="text-left p-3 font-medium">Kod kreskowy</th>
+                    <th className="text-right p-3 font-medium">Sztuka</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredUsedUnits.length > 0 ? filteredUsedUnits.map(unit => (
+                    <tr key={`${unit.productId}-${unit.unitIndex}`} className="border-t">
+                      <td className="p-3 whitespace-nowrap">
+                        {new Date(unit.usedDate).toLocaleDateString('pl-PL')}
+                      </td>
+                      <td className="p-3 font-medium">{unit.productName}</td>
+                      <td className="p-3 text-muted-foreground">{unit.brand || '—'}</td>
+                      <td className="p-3 font-mono text-muted-foreground">{unit.barcode}</td>
+                      <td className="p-3 text-right">#{unit.unitIndex + 1}</td>
+                    </tr>
+                  )) : (
+                    <tr className="border-t">
+                      <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                        Brak zużytych produktów w wybranym okresie
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Dialog edycji sprzedaży */}
       <Dialog open={!!editingSale} onOpenChange={(open) => { if (!open) setEditingSale(null) }}>

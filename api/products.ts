@@ -2,6 +2,8 @@ import { Client } from 'pg'
 
 // Read connection string from env var. Set this in Vercel as DATABASE_URL.
 const DATABASE_URL = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL
+const PRODUCT_STATUSES = new Set(['available', 'in-use', 'sold', 'sold-discount', 'used'])
+const INACTIVE_STATUSES = new Set(['sold', 'sold-discount', 'used'])
 
 async function withClient<T>(fn: (client: Client) => Promise<T>) {
   if (!DATABASE_URL) throw new Error('DATABASE_URL not set')
@@ -12,6 +14,76 @@ async function withClient<T>(fn: (client: Client) => Promise<T>) {
   } finally {
     await client.end()
   }
+}
+
+async function upsertProduct(client: Client, product: any) {
+  const priceGross = Number(product.priceGross ?? product.price ?? 0)
+  const rawVatRate = Number(product.vatRate)
+  const vatRate = [0, 5, 8, 23].includes(rawVatRate) ? rawVatRate : 23
+  const priceNet = Number(product.priceNet) || priceGross / (1 + vatRate / 100)
+  const salePrice = Number(product.salePrice) || priceNet * 1.8
+  const quantity = Math.max(1, Math.floor(Number(product.quantity) || 1))
+  const sourceStatuses = Array.isArray(product.statuses) ? product.statuses : []
+  const statuses = Array.from({ length: quantity }, (_, index) =>
+    PRODUCT_STATUSES.has(sourceStatuses[index]) ? sourceStatuses[index] : 'available'
+  )
+  const sourceStatusChangedAt = Array.isArray(product.statusChangedAt) ? product.statusChangedAt : []
+  const statusChangedAt = statuses.map((status, index) => {
+    const changedAt = sourceStatusChangedAt[index]
+    if (typeof changedAt === 'string' && !Number.isNaN(Date.parse(changedAt))) return changedAt
+    return INACTIVE_STATUSES.has(status) ? product.updatedAt || null : null
+  })
+  const sourceDiscounts = Array.isArray(product.discounts) ? product.discounts : []
+  const discounts = Array.from({ length: quantity }, (_, index) => {
+    const discount = Number(sourceDiscounts[index])
+    return Number.isFinite(discount) ? Math.max(0, Math.min(100, discount)) : 0
+  })
+
+  await client.query(
+    `INSERT INTO products(id, barcode, name, brand, mainCategory, category, gamma, price, priceNet, priceGross, vatRate, salePrice, quantity, purchaseDate, statuses, statusChangedAt, discounts, notes, updatedAt)
+     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+     ON CONFLICT (id) DO UPDATE SET
+       barcode=EXCLUDED.barcode,
+       name=EXCLUDED.name,
+       brand=EXCLUDED.brand,
+       mainCategory=EXCLUDED.mainCategory,
+       category=EXCLUDED.category,
+       gamma=EXCLUDED.gamma,
+       price=EXCLUDED.price,
+       priceNet=EXCLUDED.priceNet,
+       priceGross=EXCLUDED.priceGross,
+       vatRate=EXCLUDED.vatRate,
+       salePrice=EXCLUDED.salePrice,
+       quantity=EXCLUDED.quantity,
+       purchaseDate=EXCLUDED.purchaseDate,
+       statuses=EXCLUDED.statuses,
+       statusChangedAt=EXCLUDED.statusChangedAt,
+       discounts=EXCLUDED.discounts,
+       notes=EXCLUDED.notes,
+       updatedAt=EXCLUDED.updatedAt
+     WHERE products.updatedAt IS NULL OR EXCLUDED.updatedAt >= products.updatedAt`,
+    [
+      product.id,
+      product.barcode,
+      product.name,
+      product.brand || '',
+      product.mainCategory || 'resale',
+      product.category,
+      product.gamma || '',
+      priceGross,
+      priceNet,
+      priceGross,
+      vatRate,
+      salePrice,
+      quantity,
+      product.purchaseDate,
+      JSON.stringify(statuses),
+      JSON.stringify(statusChangedAt),
+      JSON.stringify(discounts),
+      product.notes,
+      product.updatedAt
+    ]
+  )
 }
 
 export default async function handler(req: any, res: any) {
@@ -35,8 +107,11 @@ export default async function handler(req: any, res: any) {
         const r = await client.query('SELECT * FROM products')
         return r.rows.map((row: any) => {
           const salePrice = parseFloat(row.saleprice) || 0
-          // Cena zakupu: jeśli price jest null, oblicz z saleprice (dzieląc przez 1.8)
-          const price = parseFloat(row.price) || (salePrice > 0 ? salePrice / 1.8 : 0)
+          const rawVatRate = Number(row.vatrate)
+          const vatRate = [0, 5, 8, 23].includes(rawVatRate) ? rawVatRate : 23
+          const legacyPrice = parseFloat(row.price) || 0
+          const priceGross = parseFloat(row.pricegross) || legacyPrice || (salePrice > 0 ? (salePrice / 1.8) * (1 + vatRate / 100) : 0)
+          const priceNet = parseFloat(row.pricenet) || priceGross / (1 + vatRate / 100)
           const quantity = parseInt(row.quantity) || 1
           
           // Parse statuses - JSONB z Postgres
@@ -45,6 +120,13 @@ export default async function handler(req: any, res: any) {
             try { statuses = JSON.parse(statuses) } catch { statuses = [] }
           }
           if (!Array.isArray(statuses)) statuses = []
+
+          // Parse per-unit status change dates
+          let statusChangedAt = row.statuschangedat
+          if (typeof statusChangedAt === 'string') {
+            try { statusChangedAt = JSON.parse(statusChangedAt) } catch { statusChangedAt = [] }
+          }
+          if (!Array.isArray(statusChangedAt)) statusChangedAt = []
           
           // Parse discounts
           let discounts = row.discounts
@@ -52,6 +134,19 @@ export default async function handler(req: any, res: any) {
             try { discounts = JSON.parse(discounts) } catch { discounts = [] }
           }
           if (!Array.isArray(discounts)) discounts = []
+
+          statuses = Array.from({ length: quantity }, (_, index) =>
+            PRODUCT_STATUSES.has(statuses[index]) ? statuses[index] : 'available'
+          )
+          statusChangedAt = statuses.map((status: string, index: number) => {
+            const changedAt = statusChangedAt[index]
+            if (typeof changedAt === 'string' && !Number.isNaN(Date.parse(changedAt))) return changedAt
+            return INACTIVE_STATUSES.has(status) ? row.updatedat || null : null
+          })
+          discounts = Array.from({ length: quantity }, (_, index) => {
+            const discount = Number(discounts[index])
+            return Number.isFinite(discount) ? Math.max(0, Math.min(100, discount)) : 0
+          })
           
           return {
             id: row.id,
@@ -61,12 +156,15 @@ export default async function handler(req: any, res: any) {
             mainCategory: row.maincategory || 'resale',
             category: row.category,
             gamma: row.gamma || '',
-            price: price,
-            priceGross: price,
-            salePrice: salePrice > 0 ? salePrice : price * 1.8,
+            price: priceGross,
+            priceNet: priceNet,
+            priceGross: priceGross,
+            vatRate: vatRate,
+            salePrice: salePrice > 0 ? salePrice : priceNet * 1.8,
             quantity: quantity,
             purchaseDate: row.purchasedate,
             statuses: statuses,
+            statusChangedAt: statusChangedAt,
             discounts: discounts,
             notes: row.notes,
             updatedAt: row.updatedat
@@ -83,29 +181,21 @@ export default async function handler(req: any, res: any) {
       }
 
       const result = await withClient(async (client) => {
-        const outProducts: any[] = []
-        for (const op of operations) {
-          if (op.type === 'create' && op.product) {
-            const p = op.product
-            await client.query(
-              `INSERT INTO products(id, barcode, name, brand, mainCategory, category, gamma, price, salePrice, quantity, purchaseDate, statuses, discounts, notes, updatedAt)
-               VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-               ON CONFLICT (id) DO NOTHING`,
-              [p.id, p.barcode, p.name, p.brand || '', p.mainCategory || 'resale', p.category, p.gamma || '', p.price, p.salePrice || (p.price * 1.8), p.quantity || 1, p.purchaseDate, JSON.stringify(p.statuses || []), JSON.stringify(p.discounts || []), p.notes, p.updatedAt]
-            )
-            outProducts.push(p)
-          } else if (op.type === 'update' && op.product) {
-            const p = op.product
-            await client.query(
-              `UPDATE products SET barcode=$1, name=$2, brand=$3, mainCategory=$4, category=$5, gamma=$6, price=$7, salePrice=$8, quantity=$9, purchaseDate=$10, statuses=$11, discounts=$12, notes=$13, updatedAt=$14 WHERE id=$15`,
-              [p.barcode, p.name, p.brand || '', p.mainCategory || 'resale', p.category, p.gamma || '', p.price, p.salePrice || (p.price * 1.8), p.quantity || 1, p.purchaseDate, JSON.stringify(p.statuses || []), JSON.stringify(p.discounts || []), p.notes, p.updatedAt, p.id]
-            )
-            outProducts.push(p)
-          } else if (op.type === 'delete' && op.productId) {
-            await client.query('DELETE FROM products WHERE id = $1', [op.productId])
+        await client.query('BEGIN')
+        try {
+          for (const op of operations) {
+            if ((op.type === 'create' || op.type === 'update') && op.product) {
+              await upsertProduct(client, op.product)
+            } else if (op.type === 'delete' && op.productId) {
+              await client.query('DELETE FROM products WHERE id = $1', [op.productId])
+            }
           }
+          await client.query('COMMIT')
+        } catch (error) {
+          await client.query('ROLLBACK')
+          throw error
         }
-        // return current products
+
         const r = await client.query('SELECT * FROM products')
         return r.rows
       })

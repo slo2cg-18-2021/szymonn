@@ -23,9 +23,9 @@ export default function handler(req: any, res: any) {
 
   try {
     const payload = jwt.verify(token, JWT_SECRET)
-    // @ts-ignore
-    res.status(200).json({ authenticated: true, username: payload.username })
-  } catch (err) {
+    const username = typeof payload === 'string' ? undefined : payload.username
+    res.status(200).json({ authenticated: true, username })
+  } catch {
     res.status(401).json({ authenticated: false })
   }
 }

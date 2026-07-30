@@ -8,6 +8,7 @@ Deployment steps for Neon (Postgres) + Vercel
 2) Create tables in Neon
    - Open Neon dashboard SQL editor (or use psql with `DATABASE_URL`)
    - Run the SQL from `sql/schema_neon.sql` (creates `users` and `products`).
+   - For an existing deployment, run the same file again before deploying this version. The migration block safely adds the per-unit `statusChangedAt` data and the `priceNet`, `priceGross`, and `vatRate` columns when they are missing.
 
 3) Create admin user (choose one)
    A) Locally (recommended):

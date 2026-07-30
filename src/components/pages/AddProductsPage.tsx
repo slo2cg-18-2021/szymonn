@@ -1,4 +1,4 @@
-import { Product, calculateNetPrice, calculateSalePrice, VatRate } from '@/lib/types'
+import { Product, calculateNetPrice, calculateSalePrice, VatRate, normalizeStatusChangedAt, normalizeStatuses, normalizeDiscounts, getProductGrossPrice } from '@/lib/types'
 import { BarcodeScanner } from '@/components/BarcodeScanner'
 import { ProductFormDialog } from '@/components/ProductFormDialog'
 import { LowStockAlert } from '@/components/LowStockAlert'
@@ -8,7 +8,7 @@ import { Plus, Barcode, Package, Info, FileArrowDown, FileArrowUp } from '@phosp
 import { toast } from 'sonner'
 import { parseCSV, downloadImportTemplate } from '@/lib/csv'
 import { motion } from 'framer-motion'
-import { useState, useRef } from 'react'
+import { useRef } from 'react'
 
 interface AddProductsPageProps {
   products: Product[]
@@ -64,16 +64,21 @@ export function AddProductsPage({
 
         const newProducts: Product[] = importedProducts.map(p => {
           const quantity = p.quantity || 1
-          const statuses = p.statuses && p.statuses.length > 0 
-            ? p.statuses 
-            : Array(quantity).fill('available')
-          const discounts = p.discounts && p.discounts.length > 0
-            ? p.discounts
-            : Array(quantity).fill(0)
+          const statuses = normalizeStatuses(p.statuses, quantity)
+          const discounts = normalizeDiscounts(p.discounts, quantity)
           const priceGross = p.priceGross || p.price || 0
-          const vatRate = (p.vatRate || 23) as VatRate
+          const vatRate = (p.vatRate ?? 23) as VatRate
           const priceNet = p.priceNet || calculateNetPrice(priceGross, vatRate)
           const salePrice = p.salePrice || calculateSalePrice(priceNet, vatRate)
+          const importedUpdatedAt = p.updatedAt ? new Date(p.updatedAt) : null
+          const updatedAt = importedUpdatedAt && !Number.isNaN(importedUpdatedAt.getTime())
+            ? importedUpdatedAt.toISOString()
+            : new Date().toISOString()
+          const statusChangedAt = normalizeStatusChangedAt(
+            p.statusChangedAt,
+            statuses,
+            updatedAt
+          )
           
           return {
             id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
@@ -91,9 +96,10 @@ export function AddProductsPage({
             quantity: quantity,
             purchaseDate: p.purchaseDate || new Date().toISOString().split('T')[0],
             statuses: statuses,
+            statusChangedAt: statusChangedAt,
             discounts: discounts,
             notes: p.notes || '',
-            updatedAt: new Date().toISOString()
+            updatedAt: updatedAt
           }
         })
 
@@ -120,7 +126,7 @@ export function AddProductsPage({
   }
 
   const availableCount = products.reduce((acc, p) => 
-    acc + p.statuses.filter(s => s === 'available').length, 0
+    acc + normalizeStatuses(p.statuses, p.quantity).filter(s => s === 'available').length, 0
   )
 
   return (
@@ -252,7 +258,7 @@ export function AddProductsPage({
                     <p className="text-sm text-muted-foreground">{product.barcode} • {product.category}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-medium">{Number(product.price).toFixed(2)} zł</p>
+                    <p className="font-medium">{getProductGrossPrice(product).toFixed(2)} zł</p>
                     <p className="text-sm text-muted-foreground">{product.quantity} szt.</p>
                   </div>
                 </div>

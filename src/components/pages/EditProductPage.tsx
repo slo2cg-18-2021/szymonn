@@ -148,7 +148,7 @@ export function EditProductPage({
             <div className="border-t pt-4 mt-4">
               <p className="text-sm font-medium mb-3">Ostatnio edytowane:</p>
               <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                {products
+                {[...products]
                   .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
                   .slice(0, 10)
                   .map(product => (

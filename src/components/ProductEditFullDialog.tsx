@@ -18,7 +18,10 @@ import {
   calculateSalePrice,
   calculateGrossPrice,
   calculateNetPrice,
-  getCategoriesForType
+  getCategoriesForType,
+  normalizeStatusChangedAt,
+  normalizeStatuses,
+  normalizeDiscounts
 } from '@/lib/types'
 import { Separator } from '@/components/ui/separator'
 import { Card, CardContent } from '@/components/ui/card'
@@ -65,6 +68,7 @@ export function ProductEditFullDialog({
   })
   
   const [statuses, setStatuses] = useState<ProductStatus[]>([])
+  const [statusChangedAt, setStatusChangedAt] = useState<(string | null)[]>([])
   const [discounts, setDiscounts] = useState<number[]>([])
 
   const availableCategories = useMemo(() => {
@@ -74,7 +78,7 @@ export function ProductEditFullDialog({
   useEffect(() => {
     if (open && product) {
       const priceGross = product.priceGross || product.price || 0
-      const vatRate = product.vatRate || 23
+      const vatRate = product.vatRate ?? 23
       const priceNet = product.priceNet || calculateNetPrice(priceGross, vatRate)
       const salePrice = product.salePrice || calculateSalePrice(priceNet, vatRate)
       
@@ -94,22 +98,15 @@ export function ProductEditFullDialog({
         notes: product.notes || ''
       })
       
-      // Normalizuj statusy
-      let productStatuses = product.statuses || []
-      if (typeof productStatuses === 'string') {
-        try { productStatuses = JSON.parse(productStatuses as any) } catch { productStatuses = [] }
-      }
-      if (!Array.isArray(productStatuses) || productStatuses.length === 0) {
-        productStatuses = Array(product.quantity).fill('available')
-      }
+      const productStatuses = normalizeStatuses(product.statuses, product.quantity)
       setStatuses(productStatuses)
+      setStatusChangedAt(normalizeStatusChangedAt(
+        product.statusChangedAt,
+        productStatuses,
+        product.updatedAt
+      ))
       
-      // Normalizuj discounts
-      let productDiscounts = product.discounts || []
-      if (!Array.isArray(productDiscounts) || productDiscounts.length === 0) {
-        productDiscounts = Array(product.quantity).fill(0)
-      }
-      setDiscounts(productDiscounts)
+      setDiscounts(normalizeDiscounts(product.discounts, product.quantity))
     }
   }, [open, product])
 
@@ -118,7 +115,7 @@ export function ProductEditFullDialog({
     if (!availableCategories.includes(formData.category)) {
       setFormData(prev => ({ ...prev, category: availableCategories[0] || 'Inne' }))
     }
-  }, [formData.mainCategory, availableCategories])
+  }, [formData.mainCategory, formData.category, availableCategories])
 
   const handlePriceChange = (value: string, mode: 'net' | 'gross') => {
     const price = parseFloat(value) || 0
@@ -162,17 +159,25 @@ export function ProductEditFullDialog({
     // Dostosuj tablice statusów i rabatów
     if (qty > statuses.length) {
       setStatuses([...statuses, ...Array(qty - statuses.length).fill('available')])
+      setStatusChangedAt([...statusChangedAt, ...Array(qty - statusChangedAt.length).fill(null)])
       setDiscounts([...discounts, ...Array(qty - discounts.length).fill(0)])
     } else if (qty < statuses.length) {
       setStatuses(statuses.slice(0, qty))
+      setStatusChangedAt(statusChangedAt.slice(0, qty))
       setDiscounts(discounts.slice(0, qty))
     }
   }
 
   const handleStatusChange = (index: number, newStatus: ProductStatus) => {
+    if (statuses[index] === newStatus) return
+
     const newStatuses = [...statuses]
     newStatuses[index] = newStatus
     setStatuses(newStatuses)
+
+    const newStatusChangedAt = [...statusChangedAt]
+    newStatusChangedAt[index] = new Date().toISOString()
+    setStatusChangedAt(newStatusChangedAt)
   }
 
   const handleDiscountChange = (index: number, newDiscount: string) => {
@@ -209,6 +214,7 @@ export function ProductEditFullDialog({
       quantity: parseInt(formData.quantity) || 1,
       purchaseDate: formData.purchaseDate,
       statuses: statuses,
+      statusChangedAt: statusChangedAt,
       discounts: discounts,
       notes: formData.notes,
       updatedAt: new Date().toISOString()

@@ -19,6 +19,7 @@ export interface Product {
   quantity: number
   purchaseDate: string
   statuses: ProductStatus[]
+  statusChangedAt?: (string | null)[]
   discounts?: number[] // rabaty dla każdej sztuki (jeśli sprzedana z rabatem)
   notes?: string
   updatedAt: string
@@ -104,6 +105,20 @@ export const calculateDiscountPercent = (salePrice: number, finalPrice: number):
   return Math.max(0, Math.min(100, ((salePrice - finalPrice) / salePrice) * 100))
 }
 
+export const getProductGrossPrice = (product: Product): number => {
+  return Number(product.priceGross) || Number(product.price) || 0
+}
+
+export const getProductNetPrice = (product: Product): number => {
+  const vatRate = (product.vatRate ?? 23) as VatRate
+  return Number(product.priceNet) || calculateNetPrice(getProductGrossPrice(product), vatRate)
+}
+
+export const getProductSalePrice = (product: Product): number => {
+  const vatRate = (product.vatRate ?? 23) as VatRate
+  return Number(product.salePrice) || calculateSalePrice(getProductNetPrice(product), vatRate)
+}
+
 // Statusy które oznaczają aktywny produkt (dostępny do użycia)
 export const ACTIVE_STATUSES: ProductStatus[] = ['available', 'in-use']
 
@@ -116,10 +131,52 @@ export const normalizeStatuses = (statuses: ProductStatus[] | string | undefined
   if (typeof result === 'string') {
     try { result = JSON.parse(result as any) } catch { result = [] }
   }
-  if (!Array.isArray(result) || result.length === 0) {
-    return quantity > 0 ? Array(quantity).fill('available') : []
+  if (!Array.isArray(result)) result = []
+
+  const normalizedQuantity = Math.max(0, Math.floor(Number(quantity) || 0))
+  return Array.from({ length: normalizedQuantity }, (_, index) => {
+    const status = result[index]
+    return typeof status === 'string' && status in STATUS_LABELS
+      ? status as ProductStatus
+      : 'available'
+  })
+}
+
+export const normalizeDiscounts = (
+  discounts: number[] | string | undefined,
+  quantity: number
+): number[] => {
+  let result = discounts || []
+  if (typeof result === 'string') {
+    try { result = JSON.parse(result) } catch { result = [] }
   }
-  return result as ProductStatus[]
+  if (!Array.isArray(result)) result = []
+
+  const normalizedQuantity = Math.max(0, Math.floor(Number(quantity) || 0))
+  return Array.from({ length: normalizedQuantity }, (_, index) => {
+    const discount = Number(result[index])
+    return Number.isFinite(discount) ? Math.max(0, Math.min(100, discount)) : 0
+  })
+}
+
+// Zachowaj osobną datę zmiany statusu każdej sztuki. Dla starszych danych
+// nieaktywnym sztukom przypisz ostatnią znaną datę aktualizacji produktu.
+export const normalizeStatusChangedAt = (
+  statusChangedAt: (string | null)[] | string | undefined,
+  statuses: ProductStatus[],
+  fallbackUpdatedAt?: string
+): (string | null)[] => {
+  let result = statusChangedAt || []
+  if (typeof result === 'string') {
+    try { result = JSON.parse(result) } catch { result = [] }
+  }
+  if (!Array.isArray(result)) result = []
+
+  return statuses.map((status, index) => {
+    const changedAt = result[index]
+    if (typeof changedAt === 'string' && changedAt) return changedAt
+    return fallbackUpdatedAt && INACTIVE_STATUSES.includes(status) ? fallbackUpdatedAt : null
+  })
 }
 
 // Sprawdź czy produkt ma jakiekolwiek aktywne sztuki (available lub in-use)
