@@ -20,10 +20,14 @@ CREATE TABLE IF NOT EXISTS `products` (
   `category` VARCHAR(100) DEFAULT NULL,
   `gamma` VARCHAR(255) DEFAULT NULL,
   `price` DECIMAL(10,2) DEFAULT NULL,
+  `priceNet` DECIMAL(10,2) DEFAULT NULL,
+  `priceGross` DECIMAL(10,2) DEFAULT NULL,
+  `vatRate` INT DEFAULT 23,
   `salePrice` DECIMAL(10,2) DEFAULT NULL,
   `quantity` INT DEFAULT 1,
   `purchaseDate` VARCHAR(50) DEFAULT NULL,
   `statuses` TEXT DEFAULT NULL, -- JSON encoded array
+  `statusChangedAt` TEXT DEFAULT NULL, -- JSON encoded dates for individual units
   `discounts` TEXT DEFAULT NULL, -- JSON encoded array
   `notes` TEXT DEFAULT NULL,
   `updatedAt` VARCHAR(50) DEFAULT NULL,

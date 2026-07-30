@@ -1,4 +1,4 @@
-import { Product } from './types'
+import type { Product } from './types'
 
 export interface SyncOperation {
   id: string
@@ -47,7 +47,10 @@ export const mergeSyncOperations = (operations: SyncOperation[]): SyncOperation[
       if (existing.type === 'delete') {
         continue
       }
-      operationMap.set(key, op)
+      operationMap.set(key, existing.type === 'create'
+        ? { ...op, type: 'create' }
+        : op
+      )
     } else if (op.type === 'create') {
       operationMap.set(key, op)
     }
@@ -56,4 +59,21 @@ export const mergeSyncOperations = (operations: SyncOperation[]): SyncOperation[
   return Array.from(operationMap.values()).sort(
     (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
   )
+}
+
+export const applySyncOperations = (
+  products: Product[],
+  operations: SyncOperation[]
+): Product[] => {
+  const productsById = new Map(products.map(product => [product.id, product]))
+
+  operations.forEach(operation => {
+    if (operation.type === 'delete' && operation.productId) {
+      productsById.delete(operation.productId)
+    } else if (operation.product) {
+      productsById.set(operation.product.id, operation.product)
+    }
+  })
+
+  return Array.from(productsById.values())
 }

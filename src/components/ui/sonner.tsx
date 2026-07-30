@@ -1,6 +1,5 @@
 import { Toaster as Sonner } from "sonner"
-
-import { useTheme } from "@/components/theme-provider"
+import { useTheme } from "next-themes"
 
 type ToasterProps = React.ComponentProps<typeof Sonner>
 
@@ -12,15 +11,11 @@ export function Toaster() {
       theme={theme as ToasterProps["theme"]}
       className="toaster group"
       toastOptions={{
-        classNameFunction(toast) {
-          return `${
-            toast.type === "error"
-              ? "group toast group-[.toaster]:bg-red-600 group-[.toaster]:text-white group-[.toaster]:border-red-700"
-              : toast.type === "success"
-                ? "group toast group-[.toaster]:bg-green-600 group-[.toaster]:text-white group-[.toaster]:border-green-700"
-                : "group toast group-[.toaster]:bg-white group-[.toaster]:text-black"
-          }`
-        },
+        classNames: {
+          toast: "group toast group-[.toaster]:bg-white group-[.toaster]:text-black",
+          error: "group-[.toaster]:bg-red-600 group-[.toaster]:text-white group-[.toaster]:border-red-700",
+          success: "group-[.toaster]:bg-green-600 group-[.toaster]:text-white group-[.toaster]:border-green-700",
+        }
       }}
       position="top-center"
     />

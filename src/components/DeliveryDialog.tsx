@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Product, MAIN_CATEGORY_LABELS, STATUS_LABELS, ProductStatus, calculateSalePrice, calculateNetPrice, calculateGrossPrice, VatRate } from '@/lib/types'
+import { Product, MAIN_CATEGORY_LABELS, STATUS_LABELS, ProductStatus, calculateSalePrice, calculateNetPrice, calculateGrossPrice, VatRate, normalizeStatuses } from '@/lib/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Package, Plus, Tag, Barcode, CurrencyCircleDollar } from '@phosphor-icons/react'
 import { Badge } from '@/components/ui/badge'
@@ -32,7 +32,7 @@ export function DeliveryDialog({
   const [newPriceGross, setNewPriceGross] = useState('')
   const [newPriceNet, setNewPriceNet] = useState('')
 
-  const vatRate = (product.vatRate || 23) as VatRate
+  const vatRate = (product.vatRate ?? 23) as VatRate
 
   // Przeliczanie cen przy zmianie wartości
   const handlePriceChange = (value: string, mode: 'net' | 'gross') => {
@@ -71,12 +71,7 @@ export function DeliveryDialog({
     }
   }
 
-  // Normalizuj statusy
-  let statuses = product.statuses || []
-  if (typeof statuses === 'string') {
-    try { statuses = JSON.parse(statuses as any) } catch { statuses = [] }
-  }
-  if (!Array.isArray(statuses)) statuses = []
+  const statuses = normalizeStatuses(product.statuses, product.quantity)
 
   const availableCount = statuses.filter(s => s === 'available').length
   const inUseCount = statuses.filter(s => s === 'in-use').length
@@ -192,7 +187,7 @@ export function DeliveryDialog({
               <div className="flex items-center justify-between">
                 <Label htmlFor="updatePrice" className="flex items-center gap-2 cursor-pointer">
                   <CurrencyCircleDollar className="w-4 h-4" />
-                  Zaktualizuj cenę dla nowych sztuk
+                  Zaktualizuj cenę produktu
                 </Label>
                 <Switch
                   id="updatePrice"
@@ -204,8 +199,8 @@ export function DeliveryDialog({
               {updatePrice && (
                 <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg space-y-3">
                   <p className="text-sm text-yellow-700">
-                    <strong>Uwaga:</strong> Stare sztuki zachowają cenę {currentPrice.toFixed(2)} zł. 
-                    Tylko nowe sztuki będą miały nową cenę.
+                    <strong>Uwaga:</strong> Nowa cena zastąpi {currentPrice.toFixed(2)} zł dla całego produktu,
+                    także dla istniejących sztuk.
                   </p>
                   
                   {/* Wybór trybu ceny */}

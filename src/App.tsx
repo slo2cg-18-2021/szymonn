@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useKV } from '@github/spark/hooks'
-import { Product, ProductStatus, calculateSalePrice, calculateNetPrice, VatRate, hasActiveUnits } from '@/lib/types'
+import { Product, ProductStatus, calculateSalePrice, calculateNetPrice, VatRate, hasActiveUnits, normalizeStatusChangedAt, normalizeStatuses, normalizeDiscounts, INACTIVE_STATUSES } from '@/lib/types'
 import Login from '@/components/Login'
 import { AdminLayout, PageType } from '@/components/AdminLayout'
 import { AddProductsPage } from '@/components/pages/AddProductsPage'
@@ -10,7 +10,6 @@ import { ReportsPage } from '@/components/pages/ReportsPage'
 import { SettingsPage } from '@/components/pages/SettingsPage'
 import { BudgetPlannerPage } from '@/components/pages/BudgetPlannerPage'
 import { InventoryManagement } from '@/components/InventoryManagement'
-import { ProductEditDialog } from '@/components/ProductEditDialog'
 import { ProductEditFullDialog } from '@/components/ProductEditFullDialog'
 import { DeliveryDialog } from '@/components/DeliveryDialog'
 import { OfflineStatusBanner } from '@/components/OfflineStatusBanner'
@@ -18,6 +17,7 @@ import { StatsCards } from '@/components/StatsCards'
 import { toast, Toaster } from 'sonner'
 import { useIsMobile } from '@/hooks/use-mobile'
 import { useOfflineSync } from '@/hooks/use-offline-sync'
+import { applySyncOperations } from '@/lib/sync'
 import { motion } from 'framer-motion'
 
 function App() {
@@ -33,7 +33,7 @@ function App() {
         } else {
           setIsAuthenticated(false)
         }
-      } catch (err) {
+      } catch {
         setIsAuthenticated(false)
       } finally {
         setAuthChecked(true)
@@ -84,11 +84,19 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
   const isMobile = useIsMobile()
   
   const { 
-    isOnline,
     queueCreateProduct, 
     queueUpdateProduct, 
-    queueDeleteProduct 
+    queueDeleteProduct,
+    pendingOperations
   } = useOfflineSync()
+  const pendingOperationsRef = useRef(pendingOperations)
+
+  useEffect(() => {
+    pendingOperationsRef.current = pendingOperations
+    if (pendingOperations.length > 0) {
+      setProducts(current => applySyncOperations(current || [], pendingOperations))
+    }
+  }, [pendingOperations, setProducts])
 
   // Ładowanie marek i gamm z API
   useEffect(() => {
@@ -161,8 +169,8 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
         const response = await fetch(`${apiUrl}/api/products`)
         if (response.ok) {
           const data = await response.json()
-          if (data.products && data.products.length > 0) {
-            setProducts(data.products)
+          if (Array.isArray(data.products)) {
+            setProducts(applySyncOperations(data.products, pendingOperationsRef.current))
           }
         }
       } catch (error) {
@@ -228,35 +236,33 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
   }
 
   const handleAddDelivery = (product: Product, additionalQuantity: number, newStatus: ProductStatus = 'available', newPrice?: number) => {
-    // Normalizuj istniejące statusy
-    let existingStatuses = product.statuses || []
-    if (typeof existingStatuses === 'string') {
-      try { existingStatuses = JSON.parse(existingStatuses as any) } catch { existingStatuses = [] }
-    }
-    if (!Array.isArray(existingStatuses)) existingStatuses = []
-    
+    const existingStatuses = normalizeStatuses(product.statuses, product.quantity)
+    const changedAt = new Date().toISOString()
     const newStatuses = [...existingStatuses, ...Array(additionalQuantity).fill(newStatus)]
-    const newDiscounts = [...(product.discounts || []), ...Array(additionalQuantity).fill(0)]
-    
-    // Jeśli podano nową cenę, użyj jej dla nowych sztuk
-    // Stare sztuki zachowują starą cenę (nie zmieniamy price/priceGross produktu)
-    // Ale zapisujemy nową cenę jako aktualną cenę produktu
-    const currentPrice = product.priceGross || product.price || 0
-    const priceToUse = newPrice !== undefined ? newPrice : currentPrice
+    const existingStatusChangedAt = normalizeStatusChangedAt(
+      product.statusChangedAt,
+      existingStatuses,
+      product.updatedAt
+    )
+    const newStatusChangedAt = [...existingStatusChangedAt, ...Array(additionalQuantity).fill(changedAt)]
+    const existingDiscounts = normalizeDiscounts(product.discounts, product.quantity)
+    const newDiscounts = [...existingDiscounts, ...Array(additionalQuantity).fill(0)]
+    const vatRate = (product.vatRate ?? 23) as VatRate
     
     const updatedProduct: Product = {
       ...product,
       quantity: product.quantity + additionalQuantity,
       statuses: newStatuses,
+      statusChangedAt: newStatusChangedAt,
       discounts: newDiscounts,
       // Jeśli podano nową cenę, zaktualizuj cenę produktu
       ...(newPrice !== undefined && {
         priceGross: newPrice,
         price: newPrice,
-        priceNet: calculateNetPrice(newPrice, (product.vatRate || 23) as VatRate),
-        salePrice: calculateSalePrice(calculateNetPrice(newPrice, (product.vatRate || 23) as VatRate), (product.vatRate || 23) as VatRate)
+        priceNet: calculateNetPrice(newPrice, vatRate),
+        salePrice: calculateSalePrice(calculateNetPrice(newPrice, vatRate), vatRate)
       }),
-      updatedAt: new Date().toISOString()
+      updatedAt: changedAt
     }
     
     setProducts((current) =>
@@ -277,9 +283,13 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
   const handleSaveProduct = (productData: Omit<Product, 'id' | 'updatedAt'>) => {
     if (editingProduct) {
       const updatedProduct = { 
+        ...editingProduct,
         ...productData, 
         id: editingProduct.id,
+        price: productData.priceGross,
         statuses: editingProduct.statuses,
+        statusChangedAt: editingProduct.statusChangedAt,
+        discounts: editingProduct.discounts,
         updatedAt: new Date().toISOString() 
       }
       setProducts((currentProducts) =>
@@ -291,13 +301,22 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
       toast.success('Produkt zaktualizowany', { duration: 2000 })
     } else {
       const quantity = productData.quantity
+      const updatedAt = new Date().toISOString()
+      const statuses = normalizeStatuses(productData.statuses, quantity)
+      const statusChangedAt = normalizeStatusChangedAt(productData.statusChangedAt, statuses)
+      statuses.forEach((status, index) => {
+        if (!statusChangedAt[index] && INACTIVE_STATUSES.includes(status)) {
+          statusChangedAt[index] = updatedAt
+        }
+      })
       const newProduct: Product = {
         ...productData,
         id: Date.now().toString(),
         price: productData.priceGross, // dla kompatybilności wstecznej
-        statuses: Array(quantity).fill('available'),
-        discounts: Array(quantity).fill(0),
-        updatedAt: new Date().toISOString()
+        statuses: statuses,
+        statusChangedAt: statusChangedAt,
+        discounts: normalizeDiscounts(productData.discounts, quantity),
+        updatedAt: updatedAt
       }
       setProducts((currentProducts) => [...(currentProducts || []), newProduct])
       queueCreateProduct(newProduct)
@@ -354,9 +373,11 @@ function AuthenticatedApp({ onLogout }: { onLogout: () => void }) {
 
   const handleImportProducts = (newProducts: Product[]) => {
     setProducts((currentProducts) => [...(currentProducts || []), ...newProducts])
+    newProducts.forEach(queueCreateProduct)
   }
 
   const handleClearAllData = () => {
+    ;(products || []).forEach(product => queueDeleteProduct(product.id))
     setProducts([])
   }
 

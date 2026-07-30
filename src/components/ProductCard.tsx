@@ -1,6 +1,5 @@
-import { Product, normalizeStatuses, getAvailableQuantity, getInUseQuantity, getActiveQuantity } from '@/lib/types'
+import { Product, getAvailableQuantity, getInUseQuantity, getActiveQuantity, getProductGrossPrice } from '@/lib/types'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Pencil, Trash } from '@phosphor-icons/react'
 
@@ -48,7 +47,7 @@ export function ProductCard({ product, onEdit, onDelete }: ProductCardProps) {
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Cena</p>
-            <p className="text-sm font-medium">${Number(product.price).toFixed(2)}</p>
+            <p className="text-sm font-medium">{getProductGrossPrice(product).toFixed(2)} zł</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground">Ilość aktywna</p>

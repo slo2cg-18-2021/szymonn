@@ -30,6 +30,7 @@ export function useOfflineSync() {
 
     setIsSyncing(true)
     setSyncError(null)
+    const operationsToSync = syncQueue.operations
 
     try {
       // Wyślij operacje na serwer
@@ -40,7 +41,7 @@ export function useOfflineSync() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          operations: syncQueue.operations
+          operations: operationsToSync
         })
       })
 
@@ -48,8 +49,9 @@ export function useOfflineSync() {
         throw new Error(`API error: ${response.statusText}`)
       }
 
+      const syncedOperationIds = new Set(operationsToSync.map(operation => operation.id))
       setSyncQueue((current) => ({
-        operations: [],
+        operations: (current?.operations || []).filter(operation => !syncedOperationIds.has(operation.id)),
         lastSync: new Date().toISOString()
       }))
 
@@ -95,12 +97,14 @@ export function useOfflineSync() {
   }, [setSyncQueue, syncQueue])
 
   const pendingCount = syncQueue?.operations.length || 0
+  const pendingOperations = syncQueue?.operations || []
 
   return {
     isOnline,
     isSyncing,
     syncError,
     pendingCount,
+    pendingOperations,
     lastSync: syncQueue?.lastSync,
     queueCreateProduct,
     queueUpdateProduct,

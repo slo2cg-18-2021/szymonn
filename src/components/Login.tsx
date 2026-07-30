@@ -31,7 +31,7 @@ export const Login: React.FC<Props> = ({ onLogin }) => {
         const data = await res.json()
         setError(data.error || 'Błąd logowania')
       }
-    } catch (err) {
+    } catch {
       setError('Błąd sieci')
     }
 

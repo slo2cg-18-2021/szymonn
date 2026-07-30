@@ -18,9 +18,9 @@ import {
   PieChart, Pie, Cell, ResponsiveContainer,
 } from 'recharts'
 import {
-  Plus, Pencil, Trash, TrendUp, TrendDown, CurrencyCircleDollar,
+  Pencil, Trash, TrendUp, TrendDown, CurrencyCircleDollar,
   Receipt, ChartBar, Download, Warning, RepeatOnce, Copy,
-  StickyNote, Target, ArrowLeft, ArrowRight, Coins,
+  Note, Target, ArrowLeft, ArrowRight, Coins,
 } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { cn } from '@/lib/utils'
@@ -768,7 +768,7 @@ function IncomeTable({ incomes, onAdd, onAddSimple, onEdit, onDelete, onTogglePa
                   <td className="px-3 py-1.5 font-mono text-muted-foreground">
                     {inc.entryType === 'simple'
                       ? <div className="flex items-center gap-1"><Coins className="w-3 h-3 text-green-600 flex-shrink-0" /><span className="text-green-700 dark:text-green-400 font-sans font-normal text-[11px]">gotówka</span></div>
-                      : <div className="flex items-center gap-1">{inc.recurring && <RepeatOnce className="w-3 h-3 text-primary flex-shrink-0" title="Cykliczny" />}{inc.invoiceNo}</div>
+                      : <div className="flex items-center gap-1">{inc.recurring && <span title="Cykliczny" className="inline-flex"><RepeatOnce className="w-3 h-3 text-primary flex-shrink-0" /></span>}{inc.invoiceNo}</div>
                     }
                   </td>
                   <td className="px-2 py-1.5 font-medium">{inc.contractor}</td>
@@ -827,7 +827,7 @@ function CostTable({ costs, onAdd, onAddSimple, onEdit, onDelete, onTogglePaid, 
                 const overLimit = limit !== undefined && catTotal > limit
                 return (
                   <tr key={cost.id} className={cn('border-t hover:bg-muted/30 transition-colors', !cost.paid && 'bg-red-50/20 dark:bg-red-900/5', overLimit && 'bg-red-100/30 dark:bg-red-900/15')}>
-                    <td className="px-3 py-1.5"><div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: CATEGORY_COLORS[cost.category] }} />{cost.entryType === 'simple' && <Coins className="w-3 h-3 text-orange-500 flex-shrink-0" title="Szybki wpis" />}{cost.recurring && <RepeatOnce className="w-3 h-3 text-primary flex-shrink-0" title="Cykliczny" />}<span className="truncate max-w-[90px]">{cost.category}</span>{overLimit && <Warning className="w-3 h-3 text-red-500 flex-shrink-0" title="Przekroczono limit!" />}</div></td>
+                    <td className="px-3 py-1.5"><div className="flex items-center gap-1.5"><div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: CATEGORY_COLORS[cost.category] }} />{cost.entryType === 'simple' && <span title="Szybki wpis" className="inline-flex"><Coins className="w-3 h-3 text-orange-500 flex-shrink-0" /></span>}{cost.recurring && <span title="Cykliczny" className="inline-flex"><RepeatOnce className="w-3 h-3 text-primary flex-shrink-0" /></span>}<span className="truncate max-w-[90px]">{cost.category}</span>{overLimit && <span title="Przekroczono limit!" className="inline-flex"><Warning className="w-3 h-3 text-red-500 flex-shrink-0" /></span>}</div></td>
                     <td className="px-2 py-1.5 font-medium">{cost.contractor}</td>
                     <td className="px-2 py-1.5 text-right">{cost.netAmount.toFixed(2)}</td>
                     <td className="px-2 py-1.5 text-center text-muted-foreground">{cost.vatRate === 'Zw.' ? 'Zw.' : `${cost.vatRate}%`}</td>
@@ -863,7 +863,7 @@ interface MonthlyViewProps {
   onNoteChange: (n: string) => void; onExport: () => void; onCopyPrev: () => void; hasPrev: boolean
 }
 
-function MonthlyView({ year, month, monthName, monthData, allMonthStats, limits, onAddIncome, onAddIncomeSimple, onEditIncome, onDeleteIncome, onToggleIncomePaid, onAddCost, onAddCostSimple, onEditCost, onDeleteCost, onToggleCostPaid, onNoteChange, onExport, onCopyPrev, hasPrev }: MonthlyViewProps) {
+function MonthlyView({ year, month: _month, monthName, monthData, allMonthStats, limits, onAddIncome, onAddIncomeSimple, onEditIncome, onDeleteIncome, onToggleIncomePaid, onAddCost, onAddCostSimple, onEditCost, onDeleteCost, onToggleCostPaid, onNoteChange, onExport, onCopyPrev, hasPrev }: MonthlyViewProps) {
   const totalIncome = monthData.incomes.reduce((s, i) => s + i.grossAmount, 0)
   const totalCosts  = monthData.costs.reduce((s, c) => s + c.grossAmount, 0)
   const profit      = totalIncome - totalCosts
@@ -979,7 +979,7 @@ function MonthlyView({ year, month, monthName, monthData, allMonthStats, limits,
       )}
 
       <Card>
-        <CardHeader className="pb-2 pt-4 px-4"><CardTitle className="text-sm flex items-center gap-2"><StickyNote className="w-4 h-4 text-yellow-500" />Notatka do miesiąca</CardTitle></CardHeader>
+        <CardHeader className="pb-2 pt-4 px-4"><CardTitle className="text-sm flex items-center gap-2"><Note className="w-4 h-4 text-yellow-500" />Notatka do miesiąca</CardTitle></CardHeader>
         <CardContent className="pt-0 pb-4 px-4">
           <Textarea placeholder="Uwagi, cele, komentarze do tego miesiąca..." className="resize-none text-sm min-h-[72px]" value={monthData.note} onChange={e => onNoteChange(e.target.value)} />
         </CardContent>
@@ -1175,7 +1175,7 @@ export function BudgetPlannerPage() {
   const [costDialogTab, setCostDialogTab] = useState<'invoice' | 'simple'>('invoice')
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: 'cost' | 'income'; month: number; id: string } | null>(null)
 
-  const safeData = budgetData ?? {}
+  const safeData = useMemo(() => budgetData ?? {}, [budgetData])
   const safeLimits = limits ?? {}
 
   const allContractors = useMemo<string[]>(() => {

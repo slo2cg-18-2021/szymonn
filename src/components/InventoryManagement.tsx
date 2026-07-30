@@ -1,5 +1,5 @@
-import { useState, useMemo, useEffect } from 'react'
-import { Product, ProductStatus, STATUS_LABELS, calculateSalePrice, calculateDiscountedPrice, MAIN_CATEGORY_LABELS, calculateNetPrice, VatRate, hasActiveUnits, getActiveQuantity, normalizeStatuses } from '@/lib/types'
+import { useState, useMemo } from 'react'
+import { Product, ProductStatus, calculateDiscountedPrice, MAIN_CATEGORY_LABELS, hasActiveUnits, getActiveQuantity, normalizeStatuses, normalizeStatusChangedAt, normalizeDiscounts, getProductGrossPrice, getProductSalePrice } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,6 +37,9 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
   }, [products, searchQuery, showInactive])
 
   const selectedProduct = products.find(p => p.id === selectedProductId)
+  const selectedStatuses = selectedProduct
+    ? normalizeStatuses(selectedProduct.statuses, selectedProduct.quantity)
+    : []
 
   const handleStatusChange = (index: number, status: ProductStatus) => {
     if (!selectedProduct) return
@@ -49,17 +52,27 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
       return
     }
 
-    const newDiscounts = [...(selectedProduct.discounts || [])]
+    const currentStatuses = normalizeStatuses(selectedProduct.statuses, selectedProduct.quantity)
+    const newDiscounts = normalizeDiscounts(selectedProduct.discounts, selectedProduct.quantity)
     // Jeśli zmienia się z sold-discount na coś innego, usuń rabat
-    if (selectedProduct.statuses[index] === 'sold-discount') {
+    if (currentStatuses[index] === 'sold-discount') {
       newDiscounts[index] = 0
     }
 
+    const changedAt = new Date().toISOString()
+    const newStatusChangedAt = normalizeStatusChangedAt(
+      selectedProduct.statusChangedAt,
+      currentStatuses,
+      selectedProduct.updatedAt
+    )
+    newStatusChangedAt[index] = changedAt
+
     const newProduct = {
       ...selectedProduct,
-      statuses: selectedProduct.statuses.map((s, i) => i === index ? status : s),
+      statuses: currentStatuses.map((currentStatus, i) => i === index ? status : currentStatus),
+      statusChangedAt: newStatusChangedAt,
       discounts: newDiscounts,
-      updatedAt: new Date().toISOString()
+      updatedAt: changedAt
     }
 
     onUpdateProduct(newProduct)
@@ -69,9 +82,11 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
   const handleDiscountConfirm = () => {
     if (!selectedProduct || discountIndex === null) return
 
-    const vatRate = (selectedProduct.vatRate || 23) as VatRate
-    const priceNet = Number(selectedProduct.priceNet) || calculateNetPrice(Number(selectedProduct.price), vatRate)
-    const salePrice = selectedProduct.salePrice || calculateSalePrice(priceNet, vatRate)
+    const salePrice = getProductSalePrice(selectedProduct)
+    if (salePrice <= 0) {
+      toast.error('Produkt nie ma poprawnej ceny sprzedaży')
+      return
+    }
     let discount: number
     let finalPrice: number
 
@@ -86,14 +101,24 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
       if (discount > 100) discount = 100
     }
 
-    const newDiscounts = [...(selectedProduct.discounts || Array(selectedProduct.quantity).fill(0))]
+    const currentStatuses = normalizeStatuses(selectedProduct.statuses, selectedProduct.quantity)
+    const newDiscounts = normalizeDiscounts(selectedProduct.discounts, selectedProduct.quantity)
     newDiscounts[discountIndex] = discount
+
+    const changedAt = new Date().toISOString()
+    const newStatusChangedAt = normalizeStatusChangedAt(
+      selectedProduct.statusChangedAt,
+      currentStatuses,
+      selectedProduct.updatedAt
+    )
+    newStatusChangedAt[discountIndex] = changedAt
 
     const newProduct = {
       ...selectedProduct,
-      statuses: selectedProduct.statuses.map((s, i) => i === discountIndex ? 'sold-discount' as ProductStatus : s),
+      statuses: currentStatuses.map((status, i) => i === discountIndex ? 'sold-discount' as ProductStatus : status),
+      statusChangedAt: newStatusChangedAt,
       discounts: newDiscounts,
-      updatedAt: new Date().toISOString()
+      updatedAt: changedAt
     }
 
     onUpdateProduct(newProduct)
@@ -105,32 +130,18 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
     toast.success(`Sprzedano z rabatem ${discount.toFixed(1)}% za ${finalPrice.toFixed(2)} zł`, { duration: 2000 })
   }
 
-  const getStatusColor = (status: ProductStatus) => {
-    switch (status) {
-      case 'available': return 'text-green-600'
-      case 'in-use': return 'text-yellow-600'
-      case 'used': return 'text-gray-600'
-      case 'sold': return 'text-blue-600'
-      case 'sold-discount': return 'text-purple-600'
-      default: return ''
-    }
-  }
-
   // Oblicz cenę końcową na podstawie rabatu procentowego
   const calculatedFinalPrice = useMemo(() => {
     if (!selectedProduct || !discountValue) return null
-    const vatRate = (selectedProduct.vatRate || 23) as VatRate
-    const priceNet = Number(selectedProduct.priceNet) || calculateNetPrice(Number(selectedProduct.price), vatRate)
-    const salePrice = selectedProduct.salePrice || calculateSalePrice(priceNet, vatRate)
+    const salePrice = getProductSalePrice(selectedProduct)
     return calculateDiscountedPrice(salePrice, parseFloat(discountValue) || 0)
   }, [selectedProduct, discountValue])
 
   // Oblicz rabat na podstawie ceny końcowej
   const calculatedDiscount = useMemo(() => {
     if (!selectedProduct || !finalPriceValue) return null
-    const vatRate = (selectedProduct.vatRate || 23) as VatRate
-    const priceNet = Number(selectedProduct.priceNet) || calculateNetPrice(Number(selectedProduct.price), vatRate)
-    const salePrice = selectedProduct.salePrice || calculateSalePrice(priceNet, vatRate)
+    const salePrice = getProductSalePrice(selectedProduct)
+    if (salePrice <= 0) return 0
     const finalPrice = parseFloat(finalPriceValue) || 0
     const discount = ((salePrice - finalPrice) / salePrice) * 100
     return Math.max(0, Math.min(100, discount))
@@ -153,12 +164,10 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
           <div className="space-y-4 py-4">
             {selectedProduct && ((
               () => {
-                const vatRate = (selectedProduct.vatRate || 23) as VatRate
-                const priceNet = Number(selectedProduct.priceNet) || calculateNetPrice(Number(selectedProduct.price), vatRate)
-                const salePrice = selectedProduct.salePrice || calculateSalePrice(priceNet, vatRate)
+                const salePrice = getProductSalePrice(selectedProduct)
                 return (
                   <div className="text-sm space-y-2 p-3 bg-muted/50 rounded-lg">
-                    <p>Cena zakupu: <span className="font-medium">{Number(selectedProduct.price).toFixed(2)} zł</span></p>
+                    <p>Cena zakupu: <span className="font-medium">{getProductGrossPrice(selectedProduct).toFixed(2)} zł</span></p>
                     <p>Cena sprzedaży: <span className="font-bold text-green-600">{salePrice.toFixed(2)} zł</span></p>
                   </div>
                 )
@@ -204,11 +213,7 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
                   step="0.01"
                   value={finalPriceValue}
                   onChange={(e) => setFinalPriceValue(e.target.value)}
-                  placeholder={selectedProduct ? (() => {
-                    const vatRate = (selectedProduct.vatRate || 23) as VatRate
-                    const priceNet = Number(selectedProduct.priceNet) || calculateNetPrice(Number(selectedProduct.price), vatRate)
-                    return (selectedProduct.salePrice || calculateSalePrice(priceNet, vatRate)).toFixed(2)
-                  })() : '0.00'}
+                  placeholder={selectedProduct ? getProductSalePrice(selectedProduct).toFixed(2) : '0.00'}
                 />
                 {calculatedDiscount !== null && (
                   <p className="text-sm text-muted-foreground">
@@ -325,12 +330,8 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
                     </span>
                   </div>
                   <div className="text-sm mt-2 space-y-1">
-                    <p>Cena zakupu: <span className="font-medium">{Number(selectedProduct.price).toFixed(2)} zł</span></p>
-                    <p>Cena sprzedaży: <span className="font-medium text-green-600">{(() => {
-                      const vatRate = (selectedProduct.vatRate || 23) as VatRate
-                      const priceNet = Number(selectedProduct.priceNet) || calculateNetPrice(Number(selectedProduct.price), vatRate)
-                      return (selectedProduct.salePrice || calculateSalePrice(priceNet, vatRate)).toFixed(2)
-                    })() } zł</span></p>
+                    <p>Cena zakupu: <span className="font-medium">{getProductGrossPrice(selectedProduct).toFixed(2)} zł</span></p>
+                    <p>Cena sprzedaży: <span className="font-medium text-green-600">{getProductSalePrice(selectedProduct).toFixed(2)} zł</span></p>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -338,31 +339,31 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
                     <div className="grid grid-cols-5 gap-2 text-center p-3 bg-muted rounded-lg">
                       <div>
                         <div className="text-xl font-bold text-green-600">
-                          {(selectedProduct.statuses || []).filter(s => s === 'available').length}
+                          {selectedStatuses.filter(s => s === 'available').length}
                         </div>
                         <p className="text-xs text-muted-foreground">Dostępne</p>
                       </div>
                       <div>
                         <div className="text-xl font-bold text-yellow-600">
-                          {(selectedProduct.statuses || []).filter(s => s === 'in-use').length}
+                          {selectedStatuses.filter(s => s === 'in-use').length}
                         </div>
                         <p className="text-xs text-muted-foreground">W Użyciu</p>
                       </div>
                       <div>
                         <div className="text-xl font-bold text-gray-600">
-                          {(selectedProduct.statuses || []).filter(s => s === 'used').length}
+                          {selectedStatuses.filter(s => s === 'used').length}
                         </div>
                         <p className="text-xs text-muted-foreground">Zużyte</p>
                       </div>
                       <div>
                         <div className="text-xl font-bold text-blue-600">
-                          {(selectedProduct.statuses || []).filter(s => s === 'sold').length}
+                          {selectedStatuses.filter(s => s === 'sold').length}
                         </div>
                         <p className="text-xs text-muted-foreground">Sprzedane</p>
                       </div>
                       <div>
                         <div className="text-xl font-bold text-purple-600">
-                          {(selectedProduct.statuses || []).filter(s => s === 'sold-discount').length}
+                          {selectedStatuses.filter(s => s === 'sold-discount').length}
                         </div>
                         <p className="text-xs text-muted-foreground">Z rabatem</p>
                       </div>
@@ -371,7 +372,7 @@ export function InventoryManagement({ products, onUpdateProduct }: InventoryMana
                     <div className="space-y-2">
                       <p className="text-sm font-medium">Poszczególne sztuki:</p>
                       <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                        {(selectedProduct.statuses || []).map((status, index) => (
+                        {selectedStatuses.map((status, index) => (
                           <div key={index} className="flex items-center gap-3 p-2 bg-muted rounded">
                             <span className="text-sm font-medium w-8">#{index + 1}</span>
                             <Select value={status} onValueChange={(value: ProductStatus) => handleStatusChange(index, value)}>

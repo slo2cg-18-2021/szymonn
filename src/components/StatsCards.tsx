@@ -1,4 +1,4 @@
-import { Product, calculateSalePrice, calculateDiscountedPrice, calculateNetPrice, VatRate, normalizeStatuses, hasActiveUnits } from '@/lib/types'
+import { Product, calculateDiscountedPrice, normalizeStatuses, normalizeDiscounts, hasActiveUnits, getProductGrossPrice, getProductNetPrice, getProductSalePrice } from '@/lib/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { CheckCircle, Clock, ShoppingCart, Package, Recycle } from '@phosphor-icons/react'
 
@@ -23,10 +23,8 @@ export function StatsCards({ products }: StatsCardsProps) {
   
   // Wartość magazynu - oblicz wartości brutto i netto osobno (tylko aktywne produkty)
   const { totalValueGross, totalValueNet } = activeProducts.reduce((acc, p) => {
-    const salePrice = Number(p.salePrice) || 0
-    const priceGross = Number(p.price) || Number(p.priceGross) || (salePrice > 0 ? salePrice / 1.8 : 0)
-    const vatRate = (p.vatRate || 23) as VatRate
-    const priceNet = Number(p.priceNet) || calculateNetPrice(priceGross, vatRate)
+    const priceGross = getProductGrossPrice(p)
+    const priceNet = getProductNetPrice(p)
     const activeCount = getStatuses(p).filter(s => s === 'available' || s === 'in-use').length
     return {
       totalValueGross: acc.totalValueGross + (priceGross * activeCount),
@@ -36,16 +34,15 @@ export function StatsCards({ products }: StatsCardsProps) {
   
   // Wartość sprzedaży (z marżą 80%, uwzględniając rabaty)
   const soldValue = products.reduce((sum, p) => {
-    const vatRate = (p.vatRate || 23) as VatRate
-    const priceNet = Number(p.priceNet) || calculateNetPrice(Number(p.price), vatRate)
-    const salePrice = p.salePrice || calculateSalePrice(priceNet, vatRate)
+    const salePrice = getProductSalePrice(p)
+    const discounts = normalizeDiscounts(p.discounts, p.quantity)
     let productSoldValue = 0
     
     getStatuses(p).forEach((status, index) => {
       if (status === 'sold') {
         productSoldValue += salePrice
       } else if (status === 'sold-discount') {
-        const discount = p.discounts?.[index] || 0
+        const discount = discounts[index]
         productSoldValue += calculateDiscountedPrice(salePrice, discount)
       }
     })
