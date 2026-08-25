@@ -78,6 +78,10 @@ export function DeliveryDialog({
   const soldCount = statuses.filter(s => s === 'sold' || s === 'sold-discount').length
 
   const currentPrice = product.priceGross || product.price || 0
+  const currentSalePrice = product.salePrice || calculateSalePrice(
+    product.priceNet || calculateNetPrice(currentPrice, vatRate),
+    vatRate
+  )
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -119,6 +123,10 @@ export function DeliveryDialog({
                 <div>
                   <span className="text-muted-foreground">Cena brutto:</span>
                   <span className="ml-2 font-medium">{currentPrice.toFixed(2)} zł</span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground">Cena sprzedaży:</span>
+                  <span className="ml-2 font-medium text-green-600">{currentSalePrice.toFixed(2)} zł</span>
                 </div>
               </div>
 
