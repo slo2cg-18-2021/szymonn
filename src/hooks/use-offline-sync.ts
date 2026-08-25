@@ -46,7 +46,18 @@ export function useOfflineSync() {
       })
 
       if (!response.ok) {
-        throw new Error(`API error: ${response.statusText}`)
+        let errorMessage = `API error: ${response.status} ${response.statusText}`.trim()
+        try {
+          const errorData = await response.json()
+          if (typeof errorData.error === 'string') {
+            errorMessage = errorData.code
+              ? `${errorData.error} (${errorData.code})`
+              : errorData.error
+          }
+        } catch {
+          // Keep the HTTP error when the server did not return JSON.
+        }
+        throw new Error(errorMessage)
       }
 
       const syncedOperationIds = new Set(operationsToSync.map(operation => operation.id))

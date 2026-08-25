@@ -209,7 +209,7 @@ export default async function handler(req: any, res: any) {
     if (error.message && error.message.includes('DATABASE_URL')) {
       res.status(500).json({ error: 'Missing DATABASE_URL environment variable' })
     } else {
-      res.status(500).json({ error: 'Internal server error' })
+      res.status(500).json({ error: 'Database operation failed', code: error.code || 'UNKNOWN' })
     }
   }
 }
